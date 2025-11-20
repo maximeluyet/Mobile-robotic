@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Configuration
 CAMERA_ID = 0  # ID de la caméra (0 pour webcam intégrée, 1 pour caméra externe)
-IMAGE_RES = (1080, 720)  # Résolution de la caméra
+IMAGE_RES = (1920, 1080)  # Résolution de la caméra
 NUM_IMAGES_REQUIRED = 20  # Nombre d'images requises pour la calibration
 CHESSBOARD_SIZE = (9, 6)  # Nombre de coins intérieurs du damier (colonnes, lignes)
 SQUARE_SIZE = 2.5  # Taille d'un carré en cm (pour mesures réelles)
