@@ -5,8 +5,8 @@ import pickle
 from datetime import datetime
 
 # Configuration
-CAMERA_ID = 1  # ID de la caméra (0 pour webcam intégrée, 1 pour caméra externe)
-IMAGE_RES = (1280, 720)  # Résolution de la caméra
+CAMERA_ID = 0  # ID de la caméra (0 pour webcam intégrée, 1 pour caméra externe)
+IMAGE_RES = (1080, 720)  # Résolution de la caméra
 NUM_IMAGES_REQUIRED = 20  # Nombre d'images requises pour la calibration
 CHESSBOARD_SIZE = (9, 6)  # Nombre de coins intérieurs du damier (colonnes, lignes)
 SQUARE_SIZE = 2.5  # Taille d'un carré en cm (pour mesures réelles)
@@ -48,12 +48,12 @@ def capture_calibration_images():
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, IMAGE_RES[1])
     
     if not cap.isOpened():
-        print(f"❌ Erreur: Impossible d'ouvrir la caméra {CAMERA_ID}")
+        print(f"Erreur: Impossible d'ouvrir la caméra {CAMERA_ID}")
         return [], None
     
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    print(f"\n✓ Caméra ouverte - Résolution: {width}x{height}")
+    print(f"\n Caméra ouverte - Résolution: {width}x{height}")
     
     # Créer le répertoire de sortie
     if not os.path.exists(OUTPUT_DIRECTORY):
@@ -63,14 +63,14 @@ def capture_calibration_images():
     detected_size = None
     img_counter = 0
     
-    print("\n🎥 Capture en cours...")
+    print("\n Capture en cours...")
     print(f"Objectif: {NUM_IMAGES_REQUIRED} images avec damier détecté\n")
     
     while img_counter < NUM_IMAGES_REQUIRED:
         ret, frame = cap.read()
         
         if not ret:
-            print("❌ Erreur: Impossible de capturer l'image")
+            print("Erreur: Impossible de capturer l'image")
             break
         
         display_frame = frame.copy()
