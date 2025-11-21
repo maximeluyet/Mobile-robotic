@@ -2,9 +2,8 @@
 
 class Vision:
 
-    def __init__(self, config):
+    def __init__(self):
 
-        self.config = config
         pass
 
     def generate_map(self, image_data):
