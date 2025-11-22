@@ -8,7 +8,7 @@ INPUT_DIM = 2
 P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: currently zero, get unit
 
 # Process noise covariance matrix (wheel speed noise)
-Q = np.eye(INPUT_DIM) # TODO: currently identity -> measure, get unit
+Q = np.eye(INPUT_DIM) * 0.03 # TODO: currently identity -> measure, get unit
 
 # Measurement noise covariance matrix (camera noise)
 R = np.zeros(STATE_DIM) # TODO: currently identity -> measure, get unit
