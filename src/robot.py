@@ -1,7 +1,7 @@
 # imports
 import time
 import numpy as np
-from filtering import KalmanFilter
+from filtering import ExtendedKalmanFilter
 
 ## Constants
 MM_SEC_TO_THYMIO = 33.21 / 100  # TODO: update this
@@ -17,7 +17,7 @@ class Robot:
         self.get_ir = get_ir
         self.get_acc = get_acc
 
-        self.ekf = KalmanFilter()
+        self.ekf = ExtendedKalmanFilter()
 
         pass
 
