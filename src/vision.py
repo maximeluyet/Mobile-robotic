@@ -199,7 +199,7 @@ class Vision():
         # Width: horizontal distance between bottom corners
         width_px = corner_pos[30][0] - corner_pos[23][0]  # BR.x - BL.x
         if self.pixels_per_cm is None:
-            self.pixels_per_cm = MAP_SIZE_CM[0] / width_px  # pixels/cm based on known map size
+            self.pixels_per_cm = width_px / MAP_SIZE_CM[0]  # pixels/cm based on known map size
         
         # Height: vertical distance (Y increases downward, so BL.y > TL.y)
         height_px = corner_pos[23][1] - corner_pos[69][1]  # BL.y - TL.y
@@ -261,15 +261,6 @@ class Vision():
             print("Error: No bird's eye view image provided")
             return None
         
-        # Use class attribute if pixels_per_cm not provided
-        if pixels_per_cm is None:
-            if self.pixels_per_cm is None:
-                print("Warning: pixels_per_cm not set. Using default threshold method.")
-                # Fallback: use image dimensions directly
-                pixels_per_cm = 10  # Default assumption
-            else:
-                pixels_per_cm = self.pixels_per_cm
-        
         # Step 1: Convert to grayscale
         gray = cv2.cvtColor(birdseye_view, cv2.COLOR_BGR2GRAY)
         
@@ -304,7 +295,8 @@ class Vision():
         # Create rectangular kernel to preserve straight edges
         # This maintains the original obstacle shape better than circular kernel
         kernel_size = 2 * dilation_radius_px + 1
-        kernel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, 
+        print("Dilation kernel size (pixels):", kernel_size)
+        kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, 
                                                 (kernel_size, kernel_size))
         
         dilated = cv2.dilate(cleaned, kernel_dilate, iterations=1)
