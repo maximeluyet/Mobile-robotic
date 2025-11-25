@@ -213,7 +213,7 @@ class Vision():
         
         return warped
     
-    def get_robot_position(self, birdseye_view):
+    def get_robot_position(self, birdseye_view, draw=False):
         """
         Detect the robot's ArUco marker in the bird's eye view image.
         
@@ -221,24 +221,75 @@ class Vision():
             birdseye_view: Bird's eye view image (BGR format)
             
         Returns:
-            tuple: (x, y) position of robot marker origin (corner 0) in pixels,
-                   or None if not found
+            tuple: (birdseye_view, robot_pos) where:
+                - birdseye_view: Image with robot marker drawn
+                - robot_pos: numpy array [x, y, angle] where:
+                    * x, y: center position in pixels (origin = top-left)
+                    * angle: orientation in radians [-π, π]
+                Returns (birdseye_view, None) if robot not found
         """
         gray = cv2.cvtColor(birdseye_view, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self.detector.detectMarkers(gray)
-        print("Detected marker IDs:", ids)
-        cv2.aruco.drawDetectedMarkers(birdseye_view, corners, ids)
-        robot_pos = None
+        if draw:
+            cv2.aruco.drawDetectedMarkers(birdseye_view, corners, ids)
+        robot_pos = np.array([0., 0., 0.])  # Initialize as NumPy array
         if ids is not None:
             for i, marker_id in enumerate(ids.flatten()):
+                coin = corners[i][0]
                 if marker_id == MARKER_ROBOT:
-                    # Get origin position (Top-Left corner = corner 0) of robot marker
-                    marker_corners = corners[i][0]
-                    robot_pos = (float(marker_corners[0][0]), float(marker_corners[0][1]))
-                    return robot_pos
+                    center = np.mean(coin, axis=0)
+                    robot_pos[0] = center[0]  # x position
+                    robot_pos[1] = center[1]  # y position
+                    
+                    # Calculate orientation from marker front edge vector
+                    front_edge = coin[1] - coin[0]
+                    orientation = np.arctan2(front_edge[1], front_edge[0])
+                    
+                    # Normalize angle to [-π, π]
+                    robot_pos[2] = np.arctan2(np.sin(orientation), np.cos(orientation))
+                    
+                    # Draw orientation arrow and center point
+                    start_point = (int(center[0]), int(center[1]))
+                    end_point = (int(center[0] + 50 * np.cos(orientation)), 
+                               int(center[1] + 50 * np.sin(orientation)))
+                    if draw:
+                        cv2.arrowedLine(birdseye_view, start_point, end_point, (0, 255, 0), 2)
+                        cv2.circle(birdseye_view, start_point, 3, (0, 0, 255), -1)
+        return birdseye_view, robot_pos
+    
+    def get_goal_position(self, birdseye_view, draw=False):
+        """
+        Detect the goal's ArUco marker in the bird's eye view image.
         
-        print("Robot marker not found.")
-        return None
+        Args:
+            birdseye_view: Bird's eye view image (BGR format)
+            
+        Returns:
+            tuple: (birdseye_view, goal_pos) where:
+                - birdseye_view: Image with goal marker drawn
+                - goal_pos: numpy array [x, y] where:
+                    * x, y: center position in pixels (origin = top-left)
+                Returns (birdseye_view, None) if goal not found
+        """
+        gray = cv2.cvtColor(birdseye_view, cv2.COLOR_BGR2GRAY)
+        corners, ids, _ = self.detector.detectMarkers(gray)
+        print("Detected IDs:", ids)
+        if draw:
+            cv2.aruco.drawDetectedMarkers(birdseye_view, corners, ids)
+        goal_pos = np.array([0., 0.])  # Initialize as NumPy array
+        if ids is not None:
+            for i, marker_id in enumerate(ids.flatten()):
+                coin = corners[i][0]
+                if marker_id == MARKER_GOAL:
+                    center = np.mean(coin, axis=0)
+                    goal_pos[0] = center[0]  # x position
+                    goal_pos[1] = center[1]  # y position
+                    
+                    # Draw center point
+                    start_point = (int(center[0]), int(center[1]))
+                    if draw:
+                        cv2.circle(birdseye_view, start_point, 5, (255, 0, 0), -1)
+        return birdseye_view, goal_pos
 
     
     def detect_obstacles(self, birdseye_view, pixels_per_cm=None, robot_width_cm=ROBOT_WIDTH_CM):

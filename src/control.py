@@ -7,7 +7,7 @@ import math
 k_rho, k_alpha, k_beta = 0.6, 1.2, -0.3
 l = 0.047  # half axle length [m](adjust%20for%20Thymio%20~%2094%20mm%20axle)
 r = 0.022  # wheel radius [m](adjust%20for%20Thymio%20wheel)
-scale = 200  # maps rad/s to motor target units (tune)
+scale = 0.01  # maps rad/s to motor target units (tune)
 rho_stop = 0.03  # [m]
 
 class Control:
@@ -17,7 +17,7 @@ class Control:
         pass
 
     # Helpers
-    def wrapToPi(a):
+    def wrapToPi(self, a):
         while a > math.pi: 
             a -= 2*math.pi
         while a < -math.pi: 
@@ -39,7 +39,9 @@ class Control:
 
         # Control law
         v = k_rho * rho
+        print("v =", v)
         omega = k_alpha * alpha + k_beta * beta
+        print("omega =", omega)
 
         # Map to wheels
         wL = (v - l*omega)/r
@@ -49,4 +51,4 @@ class Control:
         left_wheel_speed = int(max(min(scale * wL, 400), -400))
         right_wheel_speed = int(max(min(scale * wR, 400), -400))
 
-        return [left_wheel_speed, right_wheel_speed]
+        return (left_wheel_speed, right_wheel_speed)
