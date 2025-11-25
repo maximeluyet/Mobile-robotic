@@ -8,10 +8,13 @@ INPUT_DIM = 2
 P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: currently zero, get unit
 
 # Process noise covariance matrix (wheel speed noise)
-Q = np.eye(INPUT_DIM) * 0.03 # TODO: currently identity -> measure, get unit
+Q = np.eye(INPUT_DIM)*3 # TODO: currently identity -> measure, get unit
+# Q[0,0] = 0.5
 
 # Measurement noise covariance matrix (camera noise)
 R = np.zeros(STATE_DIM) # TODO: currently identity -> measure, get unit
+# R = np.eye(STATE_DIM) * 0.1
+# R[2, 2] = 0
 
 WHEEL_BASE = 94 # mm # TODO: correct maybe
 
@@ -19,7 +22,7 @@ WHEEL_BASE = 94 # mm # TODO: correct maybe
 class ExtendedKalmanFilter:
     ''' Extended Kalman Filter implementation for state estimation. '''
     
-    def __init__(self):
+    def __init__(self, keepHist=False):
         
         self.initialized = False
 
