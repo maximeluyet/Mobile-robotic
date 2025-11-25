@@ -14,7 +14,7 @@ class GlobalNavigation:
         self.Map100[90:95, 80:100] = -1
 
         self.SearchStart = (2, 2)
-        self.SearchGoal = (99, 99)
+        self.SearchGoal = (700, 700)
 
     def set_map(self, map_data):
         ''' Set the environment map for navigation.'''

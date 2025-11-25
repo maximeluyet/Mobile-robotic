@@ -105,7 +105,7 @@ class Vision():
         """
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self.detector.detectMarkers(gray)
-        cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+        #cv2.aruco.drawDetectedMarkers(frame, corners, ids)
         
         # Build dictionary of detected markers (only MAP_MARKERS)
         markers = {}
@@ -226,6 +226,7 @@ class Vision():
         """
         gray = cv2.cvtColor(birdseye_view, cv2.COLOR_BGR2GRAY)
         corners, ids, _ = self.detector.detectMarkers(gray)
+        print("Detected marker IDs:", ids)
         cv2.aruco.drawDetectedMarkers(birdseye_view, corners, ids)
         robot_pos = None
         if ids is not None:
@@ -310,7 +311,11 @@ class Vision():
         
         # Step 6: Convert to binary occupancy grid (0 and 1)
         # 255 -> 1 (obstacle), 0 -> 0 (free space)
-        occupancy_grid = (dilated > 0).astype(np.uint8)
+        occupancy_grid = (dilated > 0).astype(np.int8)
+        for i in range(occupancy_grid.shape[0]):
+            for j in range(occupancy_grid.shape[1]):
+                if occupancy_grid[i][j]==1:
+                    occupancy_grid[i][j]=-1
         
         return occupancy_grid
 
@@ -332,8 +337,7 @@ class Vision():
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-
-    def webcam_connextion(self):
+    def webcam_connection(self):
         """
         Connect to the webcam and verify the connection status.
     

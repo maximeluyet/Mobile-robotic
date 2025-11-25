@@ -68,7 +68,7 @@ class Vision():
     # 0. INITIALIZATION METHODS
     # ============================================
     
-    def webcam_connextion(self):
+    def webcam_connection(self):
         """
         Connect to the webcam and verify the connection status.
     
