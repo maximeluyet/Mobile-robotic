@@ -1,4 +1,5 @@
 import numpy as np
+from dataclasses import dataclass
 
 # Module constants:
 STATE_DIM = 3
@@ -8,10 +9,11 @@ INPUT_DIM = 2
 P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: currently zero, get unit
 
 # Process noise covariance matrix (wheel speed noise)
-Q = np.eye(INPUT_DIM) # TODO: currently identity -> measure, get unit
+Q = np.eye(INPUT_DIM) * 10 # TODO: currently identity -> measure, get unit
 
 # Measurement noise covariance matrix (camera noise)
-R = np.zeros(STATE_DIM) # TODO: currently identity -> measure, get unit
+R = np.eye(STATE_DIM) * 0.01 # TODO: currently identity -> measure, get unit
+R[2, 2] = 0.001
 
 WHEEL_BASE = 94 # mm # TODO: correct maybe
 
@@ -22,7 +24,6 @@ class ExtendedKalmanFilter:
     def __init__(self):
         
         self.initialized = False
-
     
     def init_state(self, camera_pose_m):
 
@@ -41,9 +42,6 @@ class ExtendedKalmanFilter:
         # Get linear and angular velocities from wheel speeds
         v_lin = (right_speed_m + left_speed_m) / 2.0
         v_ang = (right_speed_m - left_speed_m) / WHEEL_BASE
-        
-        if verbose:
-            print(f"Predict step with v_lin: {v_lin}, v_ang: {v_ang}, dt: {dt}")
 
         # Update state based on motion model
         self.x[0] = self.x[0] + v_lin * np.cos(self.x[2]) * dt
@@ -98,3 +96,46 @@ class ExtendedKalmanFilter:
         
         return F_x, F_u
     
+
+@dataclass
+class CoordinateTransform2D:
+    px_per_mm: float
+    map_height_mm: float
+
+    def vision_to_ekf(self, pose):
+        x, y, theta = pose
+
+        x_e = x / self.px_per_mm
+        y_e = self.map_height_mm - (y / self.px_per_mm)
+        theta_e = -theta
+
+        return np.array([x_e, y_e, theta_e])
+    
+    def ekf_to_vision(self, pose):
+        x_e, y_e, theta_e = pose
+
+        x = x_e * self.px_per_mm
+        y = (self.map_height_mm - y_e) * self.px_per_mm
+        theta = -theta_e
+
+        return np.array([x, y, theta])
+
+
+@dataclass
+class WheelSpeedTransform:
+    thymio_to_mm_sec_right: float
+    thymio_to_mm_sec_left: float
+
+    def thymio_to_mmsec(self, left_speed, right_speed):
+
+        left_mm_sec = left_speed / self.thymio_to_mm_sec_left
+        right_mm_sec = right_speed / self.thymio_to_mm_sec_right
+
+        return left_mm_sec, right_mm_sec
+    
+    def mmsec_to_thymio(self, left_speed, right_speed):
+
+        left_thymio = left_speed * self.thymio_to_mm_sec_left
+        right_thymio = right_speed * self.thymio_to_mm_sec_right
+
+        return left_thymio, right_thymio
