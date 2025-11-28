@@ -155,6 +155,9 @@ class GlobalNavigation:
                 if dist < min_dist:
                     min_dist = dist
                     closest_point = proj
+        if closest_point is None:
+            return None
+        # convert from (row,col) to image frame (x,y)
         closest_point_image_frame = np.array([closest_point[1], closest_point[0]], dtype=float)
         return closest_point_image_frame
     
@@ -316,7 +319,7 @@ class GlobalNavigation:
             plt.arrow(robot_pose[0], robot_pose[1],np.cos(theta)*3, np.sin(theta)*3,
                       head_width=5.0, head_length=10.0, fc='m', ec='m', label='Robot direction')
         if closest_point is not None:
-            plt.plot(closest_point[1], closest_point[0], 'yx', markersize=10, label='Closest Point on Path')
+            plt.plot(closest_point[0], closest_point[1], 'yx', markersize=10, label='Closest Point on Path')
         if target_point is not None:
             plt.plot(target_point[1], target_point[0], 'ks', markersize=10, label='Target Point')
 

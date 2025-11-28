@@ -5,7 +5,7 @@ import threading
 # Global constants
 
 # TODO: detail: in the end maybe add to vision class since they are only used there...
-ROBOT_WIDTH_CM = 11.0
+ROBOT_WIDTH_CM = 13.0
 MAP_SIZE_CM = (95.0, 60.0)  # Width x Height in cm
 
 MAP_MARKERS_OLD = [69, 42, 23, 30]  # IDs for the 4 corners: [TL, TR, BL, BR]

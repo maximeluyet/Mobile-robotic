@@ -4,10 +4,10 @@ import math
 
 
 # Tunables
-k_rho, k_alpha, k_beta = 1,1,-0.5 # 0.6, 1.2, -0.3
+k_rho, k_alpha, k_beta = 1,1,-1 # 0.6, 1.2, -0.3
 l = 0.047  # half axle length [m](adjust%20for%20Thymio%20~%2094%20mm%20axle)
 r = 0.022  # wheel radius [m](adjust%20for%20Thymio%20wheel)
-scale = 10  # maps rad/s to motor target units (tune)
+scale = 20  # maps rad/s to motor target units (tune)
 rho_stop = 0.03  # [m]
 
 class Control:
@@ -31,8 +31,8 @@ class Control:
         rho = math.hypot(dx, dy)
         if rho < rho_stop:
             # Final orientation alignment
-            alpha = 0.0
-            beta  = self.wrapToPi(goal_pose[2] - robot_pose[2])
+                alpha = 0.0
+                beta  = self.wrapToPi(goal_pose[2] - robot_pose[2])
         else:
             alpha = self.wrapToPi(math.atan2(dy, dx) - robot_pose[2])
             beta  = self.wrapToPi(goal_pose[2] - robot_pose[2] - alpha)
