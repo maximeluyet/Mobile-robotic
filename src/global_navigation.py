@@ -6,15 +6,7 @@ import matplotlib.pyplot as plt
 class GlobalNavigation:
     
     def __init__(self):
-        self.Map100 = np.zeros((100, 100))
-        self.Map100[40:70, 40:70] = 0.
-        self.Map100[60:80, 60:80] = -1
-        self.Map100[85:95, 20:50] = -1
-        self.Map100[20:50, 80:90] = -1
-        self.Map100[90:95, 80:100] = -1
-
-        self.SearchStart = (2, 2)
-        self.SearchGoal = (700, 700)
+        pass
 
     def set_map(self, map_data):
         ''' Set the environment map for navigation.'''
@@ -119,16 +111,16 @@ class GlobalNavigation:
                 y1 += sy
         return True
 
-    def find_closest_point_on_path(self, robot_pose, path):
-        ''' Find the closest point on the path to the robot's current position.'''
-        min_dist = float('inf')
-        closest_idx = 0
-        for i, point in enumerate(path):
-            dist = np.sqrt((point[0] - robot_pose[0])**2 + (point[1] - robot_pose[1])**2)
-            if dist < min_dist:
-                min_dist = dist
-                closest_idx = i
-        return closest_idx
+    # def find_closest_point_on_path(self, robot_pose, path):
+    #     ''' Find the closest point on the path to the robot's current position.'''
+    #     min_dist = float('inf')
+    #     closest_idx = 0
+    #     for i, point in enumerate(path):
+    #         dist = np.sqrt((point[0] - robot_pose[0])**2 + (point[1] - robot_pose[1])**2)
+    #         if dist < min_dist:
+    #             min_dist = dist
+    #             closest_idx = i
+    #     return closest_idx
     
     def find_closest_point_smoothed_path(self, robot_pose, smoothed_path):
         '''Find closest perpendicular point on smoothed path to robot_pose.'''
@@ -169,54 +161,14 @@ class GlobalNavigation:
             return False
         return True
     
-    def target_point(self, closest_point_on_path, look_ahead_distance, path=None):
+    def target_point(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False):
         '''Travel a certain distance along a path starting from a point on the path.
 
-        Parameters
-        - closest_point_on_path: either an (x,y) coordinate (numpy array or tuple) lying on
-          a smoothed path segment, or an integer index into a discrete grid path list.
-        - look_ahead_distance: distance (in the same units as path coordinates, e.g. cells)
-          to travel forward along the path from the closest point to produce the
-          target point.
-        - path: required when closest_point_on_path is a coordinate — the ordered list
-          of waypoints (list/array of (r,c) or (x,y) pairs) that defines the path.
-
-        Returns
-        - target_point: numpy array [x, y] of the point located look_ahead_distance ahead
-          along the path. If the lookahead extends beyond the path end, returns the final
-          path waypoint (goal).
-
-        Notes
-        - Coordinates are treated as (row, col) / (y, x) consistently with the rest of
-          this module (i.e. index 0 is the vertical axis).
+        Extended: when return_angles=True the function returns a tuple
+        (target_point, closest_segment_angle, target_segment_angle) where angles
+        are in radians and computed relative to the x-axis (columns).
         '''
-        # If the caller passed an integer index, we require a discrete path list
-        if isinstance(closest_point_on_path, int):
-            if path is None:
-                raise ValueError("path must be provided when closest_point_on_path is an index")
-            idx = int(closest_point_on_path)
-            # start from the path node at idx, walk forward accumulating Euclidean distance
-            remaining = float(look_ahead_distance)
-            # convert path entries to numpy arrays
-            pts = [np.array(p, dtype=float) for p in path]
-            if idx >= len(pts):
-                return pts[-1]
-            # if lookahead is zero or negative, return the current node
-            if remaining <= 0:
-                return pts[idx]
-            for i in range(idx, len(pts) - 1):
-                seg_start = pts[i]
-                seg_end = pts[i + 1]
-                seg_len = np.linalg.norm(seg_end - seg_start)
-                if seg_len >= remaining:
-                    # interpolate along this segment
-                    t = remaining / seg_len if seg_len > 0 else 0.0
-                    return seg_start + t * (seg_end - seg_start)
-                remaining -= seg_len
-            # if we reach here, lookahead extends beyond goal
-            return pts[-1]
-
-        # otherwise assume closest_point_on_path is a coordinate on a smoothed path
+        # Thee closest_point_on_path is a coordinate on a smoothed path
         cp = np.array(closest_point_on_path, dtype=float)
         if path is None:
             raise ValueError("path must be provided when closest_point_on_path is a coordinate")
@@ -252,9 +204,14 @@ class GlobalNavigation:
         # First consume the remainder of current segment
         start_seg_end = pts[seg_idx + 1]
         to_end = np.linalg.norm(start_seg_end - proj_point)
+        # compute angle of the closest segment (row delta, col delta -> atan2(dy,dx))
+        closest_seg_angle = float(np.arctan2(start_seg_end[0]-pts[seg_idx][0], start_seg_end[1]-pts[seg_idx][1]))
         if remaining <= to_end:
             t = remaining / to_end if to_end > 0 else 0.0
-            return proj_point + t * (start_seg_end - proj_point)
+            target = proj_point + t * (start_seg_end - proj_point)
+            if return_angles:
+                return target, closest_seg_angle, closest_seg_angle
+            return target
         remaining -= to_end
         # advance through subsequent full segments
         for j in range(seg_idx + 1, len(pts) - 1):
@@ -263,9 +220,21 @@ class GlobalNavigation:
             seg_len = np.linalg.norm(e - s)
             if seg_len >= remaining:
                 t = remaining / seg_len if seg_len > 0 else 0.0
-                return s + t * (e - s)
+                target = s + t * (e - s)
+                if return_angles:
+                    target_seg_angle = float(np.arctan2(e[0]-s[0], e[1]-s[1]))
+                    return target, closest_seg_angle, target_seg_angle
+                return target
             remaining -= seg_len
         # if we get here, return the last waypoint
+        if return_angles:
+            # angle of last segment
+            if len(pts) >= 2:
+                s = pts[-2]; e = pts[-1]
+                last_angle = float(np.arctan2(e[0]-s[0], e[1]-s[1]))
+            else:
+                last_angle = 0.0
+            return pts[-1], closest_seg_angle, last_angle
         return pts[-1]
 
     def display_map(self, Map, path8, SearchStart, SearchGoal, explored8, smoothed_path=None, robot_pose=None, closest_point=None, target_point=None, attractive_vector=None):
