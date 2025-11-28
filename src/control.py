@@ -4,10 +4,10 @@ import math
 
 
 # Tunables
-k_rho, k_alpha, k_beta = 0.6, 1.2, -0.3
+k_rho, k_alpha, k_beta = 1,1,-0.5 # 0.6, 1.2, -0.3
 l = 0.047  # half axle length [m](adjust%20for%20Thymio%20~%2094%20mm%20axle)
 r = 0.022  # wheel radius [m](adjust%20for%20Thymio%20wheel)
-scale = 0.01  # maps rad/s to motor target units (tune)
+scale = 10  # maps rad/s to motor target units (tune)
 rho_stop = 0.03  # [m]
 
 class Control:

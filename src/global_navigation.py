@@ -18,6 +18,25 @@ class GlobalNavigation:
         return (dx + dy) + (np.sqrt(2) - 2) * min(dx, dy)
 
     def grid_search_astar(self, Map, S, G):
+        ''' Perform A* search on the grid map from start S to goal G.
+        Inputs:
+            Map: 2D numpy array with -1 for obstacles, 0 for free, >0 for sand cost
+            S: tuple (x, y) (column, row) for start position — NOTE: inputs are (x,y)
+            G: tuple (x, y) (column, row) for goal position — NOTE: inputs are (x,y)
+        Outputs:
+            path: list of tuples representing the path from S to G (in (row, col) format, as used by the Map)
+            explored: set of explored nodes (row,col)
+            operation_count: number of operations performed
+
+        The function accepts start/goal as (x,y) for convenience (x=column, y=row)
+        and internally converts them to (row, col) for indexing into `Map`.
+        '''
+        # Accept S and G from caller as (x, y) (column, row). Convert to (row, col).
+        try:
+            S = (int(S[1]), int(S[0]))
+            G = (int(G[1]), int(G[0]))
+        except Exception:
+            raise ValueError("S and G must be indexable tuples/lists with two numeric elements (x,y)")
         came_from = {}
         g_costs = {S: 0.0}
         explored = set()
@@ -124,6 +143,7 @@ class GlobalNavigation:
     
     def find_closest_point_smoothed_path(self, robot_pose, smoothed_path):
         '''Find closest perpendicular point on smoothed path to robot_pose.'''
+        robot_pose = np.array([robot_pose[1], robot_pose[0]], dtype=float)
         min_dist = float('inf')
         closest_point = None
         for i in range(len(smoothed_path) - 1):
@@ -135,7 +155,8 @@ class GlobalNavigation:
                 if dist < min_dist:
                     min_dist = dist
                     closest_point = proj
-        return closest_point
+        closest_point_image_frame = np.array([closest_point[1], closest_point[0]], dtype=float)
+        return closest_point_image_frame
     
     def project_point_onto_line(self, point, line_start, line_end):
         ''' Project a point onto a line defined by two points.'''
@@ -169,6 +190,7 @@ class GlobalNavigation:
         are in radians and computed relative to the x-axis (columns).
         '''
         # Thee closest_point_on_path is a coordinate on a smoothed path
+        closest_point_on_path = [closest_point_on_path[1], closest_point_on_path[0]]  # (row, col) -> (x, y)
         cp = np.array(closest_point_on_path, dtype=float)
         if path is None:
             raise ValueError("path must be provided when closest_point_on_path is a coordinate")
@@ -272,9 +294,10 @@ class GlobalNavigation:
         # Draw path, start, goal on top as solid colors
         for cell in path8:
             base[cell] = (0.0, 1.0, 0.0)  # Path - green
-
-        base[SearchStart] = (0.0, 0.0, 1.0)  # Start - blue
-        base[SearchGoal] = (1.0, 0.0, 0.0)   # Goal - red
+        # start = SearchStart[:2].astype(int)
+        # base[start] = (0.0, 0.0, 1.0)  # Start - blue
+        # goal = SearchGoal[:2].astype(int)
+        # base[goal] = (1.0, 0.0, 0.0)   # Goal - red
 
         plt.figure(figsize=(12, 12))
         plt.imshow(base, interpolation='nearest')
@@ -289,9 +312,9 @@ class GlobalNavigation:
                 
         if robot_pose is not None:
             theta = robot_pose[2]
-            plt.plot(robot_pose[1], robot_pose[0], 'mo', markersize=10, label='Robot Position')
-            plt.arrow(robot_pose[1], robot_pose[0],np.cos(theta)*3, np.sin(theta)*3,
-                      head_width=1.0, head_length=1.0, fc='m', ec='m', label='Robot direction')
+            plt.plot(robot_pose[0], robot_pose[1], 'mo', markersize=10, label='Robot Position')
+            plt.arrow(robot_pose[0], robot_pose[1],np.cos(theta)*3, np.sin(theta)*3,
+                      head_width=5.0, head_length=10.0, fc='m', ec='m', label='Robot direction')
         if closest_point is not None:
             plt.plot(closest_point[1], closest_point[0], 'yx', markersize=10, label='Closest Point on Path')
         if target_point is not None:
