@@ -6,9 +6,10 @@ import threading
 
 # TODO: detail: in the end maybe add to vision class since they are only used there...
 ROBOT_WIDTH_CM = 11.0
-MAP_SIZE_CM = (71.0, 71.0)  # Width x Height in cm
+MAP_SIZE_CM = (95.0, 60.0)  # Width x Height in cm
 
-MAP_MARKERS = [69, 42, 23, 30]  # IDs for the 4 corners: [TL, TR, BL, BR]
+MAP_MARKERS_OLD = [69, 42, 23, 30]  # IDs for the 4 corners: [TL, TR, BL, BR]
+MAP_MARKERS = [42, 30, 69, 23]  # IDs for the 4 corners: [TL, TR, BL, BR]
 
 CAMERA_MATRIX = np.array([[1484.14935, 0, 964.220337],
                           [0, 1490.50225, 539.531044],
@@ -23,7 +24,7 @@ CAMERA_RESOLUTION = (1920, 1080)
 MARKER_CORNERS = [42, 30, 69, 23]  # IDs for the 4 corners: [TL, TR, BL, BR]
 MARKER_ROBOT = 78                  # ID for the robot marker
 MARKER_GOAL = 53                   # ID for the goal marker
-ARUCO_SIZE_CM = 5.0                # Real size of ArUco markers in cm (5cm x 5cm at 300 DPI)
+ARUCO_SIZE_CM = 10.0                # Real size of ArUco markers in cm (5cm x 5cm at 300 DPI)
 
 class Vision():
     def __init__(self):
@@ -68,6 +69,7 @@ class Vision():
 
         # Detect the map markers
         markers = self._detect_map_markers(frame)
+        print("Detected markers:", markers)
         required_ids = [69, 42, 23, 30]
         if markers is None or not all(marker_id in markers for marker_id in required_ids):
             print(f"Failed to detect all required ArUco corner markers: {required_ids}")
@@ -75,13 +77,14 @@ class Vision():
         
         # Compute map dimensions in pixels from detected corners
         # Width: horizontal distance between bottom corners
-        width_px = markers[30][0] - markers[23][0]  # BR.x - BL.x
+        width_px = markers[MAP_MARKERS[1]][0] - markers[MAP_MARKERS[0]][0]  # BR.x - BL.x
         if self.pixels_per_cm is None:
             self.pixels_per_cm = width_px / MAP_SIZE_CM[0]  # pixels/cm based on known map size
         
         # Height: vertical distance (Y increases downward, so BL.y > TL.y)
-        height_px = markers[23][1] - markers[69][1]  # BL.y - TL.y
-        
+        height_px = markers[MAP_MARKERS[3]][1] - markers[MAP_MARKERS[1]][1]  # BL.y - TL.y
+        print("Map size in pixels: width =", width_px, ", height =", height_px)
+        print("Pixels per cm:", self.pixels_per_cm)
         # Get perspective transformation matrix
         self.M = self._get_transform_matrix(markers, width_px, height_px)
         
@@ -127,11 +130,11 @@ class Vision():
         # Step 3: Binary thresholding (Otsu's method for automatic threshold)
         # Black obstacles on white background: threshold inverted
         # After threshold: obstacles=255 (white), free space=0 (black)
-        _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        # _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
         
         # Alternative method using adaptive threshold for varying lighting:
-        # binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-        #                                cv2.THRESH_BINARY_INV, 11, 2)
+        binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                       cv2.THRESH_BINARY_INV, 11, 2)
         
         # Step 4: Morphological operations to clean up noise
         # Remove small noise with opening (erosion followed by dilation)
@@ -338,10 +341,10 @@ class Vision():
         # Extract corner positions from dictionary in correct order
         # Source points are the actual detected marker positions
         src_pts = np.array([
-            corners_dict[69],  # Top-Left (ID 69)
-            corners_dict[42],  # Top-Right (ID 42)
-            corners_dict[23],  # Bottom-Left (ID 23)
-            corners_dict[30]   # Bottom-Right (ID 30)
+            corners_dict[MAP_MARKERS[0]],  # Top-Left (ID 69)
+            corners_dict[MAP_MARKERS[1]],  # Top-Right (ID 42)
+            corners_dict[MAP_MARKERS[2]],  # Bottom-Left (ID 23)
+            corners_dict[MAP_MARKERS[3]]   # Bottom-Right (ID 30)
         ], dtype="float32")
         
         # Define destination points for bird's eye view (perfect rectangle)
