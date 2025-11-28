@@ -96,78 +96,113 @@ class Vision():
         return warped
 
 
-    def get_occupancy_grid(self, frame, is_world_frame=False):
-        # Function to detect obstacles in frame and generate the occupancy grid
-        # TODO: clean up and put less comments
-        """
-        Detect black obstacles on white background and create binary occupancy grid.
-        Obstacles are dilated to account for robot width for safe path planning.
-        
-        Args:
-            birdseye_view: Bird's eye view image (BGR format)
-            pixels_per_cm: Pixels per centimeter scale (if None, uses self.pixels_per_cm)
-            robot_width_cm: Width of robot in cm for dilation safety margin
-            
-        Returns:
-            numpy.ndarray: Binary occupancy grid where:
-                - 1 = obstacle (including safety margin)
-                - 0 = free space
-                Returns None if detection fails.
-        """
-
-        # Crop the frame to world
+    def get_occupancy_grid(self, frame, is_world_frame=False, is_marker_in_corners=False, debug=False):
         if not is_world_frame:
             frame = self._cut_frame_to_world(frame)
         
         # Step 1: Convert to grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # TODO: detect and erase robot and goal aruco markers
+        # Step 2: Apply Gaussian blur
+        blurred = cv2.GaussianBlur(gray, (9, 9), 0)
         
-        # Step 2: Apply Gaussian blur to reduce noise
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        
-        # Step 3: Binary thresholding (Otsu's method for automatic threshold)
-        # Black obstacles on white background: threshold inverted
-        # After threshold: obstacles=255 (white), free space=0 (black)
-        # _, binary = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        
-        # Alternative method using adaptive threshold for varying lighting:
+        # Step 3: Adaptive Thresholding
+        # This might create the "halo" artifact around markers, but we will fix it next
         binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                                        cv2.THRESH_BINARY_INV, 11, 2)
+        binary_copy = binary.copy()
         
-        # Step 4: Morphological operations to clean up noise
-        # Remove small noise with opening (erosion followed by dilation)
+        # --- FIXED: MASKING AFTER THRESHOLDING ---
+        if is_marker_in_corners:
+            # Calculate mask size
+            # ARUCO_SIZE_CM + Margin (e.g., 2cm)
+            mask_size_px = int((ARUCO_SIZE_CM + 2.0) * self.pixels_per_cm)
+            
+            # IMPORTANT: Paint with 0 (Black). 
+            # In the 'binary' image, 0 means Free Space, 255 means Obstacle.
+            # This wipes out the markers AND any "halo" artifacts cleanly.
+            color = 0 
+            
+            h, w = binary.shape
+            
+            # Top-Left
+            cv2.rectangle(binary, (0, 0), (mask_size_px, mask_size_px), color, -1)
+            # Top-Right
+            cv2.rectangle(binary, (w - mask_size_px, 0), (w, mask_size_px), color, -1)
+            # Bottom-Left
+            cv2.rectangle(binary, (0, h - mask_size_px), (mask_size_px, h), color, -1)
+            # Bottom-Right
+            cv2.rectangle(binary, (w - mask_size_px, h - mask_size_px), (w, h), color, -1)
+        # -----------------------------------------
+
+        # Step 4: Morphological operations (Clean up noise)
         kernel_noise = np.ones((3, 3), np.uint8)
         cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel_noise, iterations=1)
-        
-        # Fill small holes in obstacles with closing (dilation followed by erosion)
         cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel_noise, iterations=1)
+
+        # --- NEW STEP: FILL HOLES ---
+        # Find the external contours (boundaries) of the cleaned shapes
+        contours, _ = cv2.findContours(cleaned, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Draw over the original 'cleaned' image
+        # -1 index: Draw all contours
+        # 255: Color White
+        # thickness=-1: Fill the shape
+        cv2.drawContours(cleaned, contours, -1, 255, thickness=-1)
+        # ----------------------------
         
-        # Step 5: Dilate obstacles to account for robot width (safety margin)
-        # Calculate dilation kernel size based on robot width
-        # Dilation radius = half robot width (to expand obstacle on all sides)
+        # Step 5: Dilate obstacles (Safety Margin)
         dilation_radius_px = int((ROBOT_WIDTH_CM / 2.0) * self.pixels_per_cm)
-        
-        # Ensure minimum dilation of at least 1 pixel
         dilation_radius_px = max(1, dilation_radius_px)
         
-        # Create rectangular kernel to preserve straight edges
-        # This maintains the original obstacle shape better than circular kernel
         kernel_size = 2 * dilation_radius_px + 1
-        print("Dilation kernel size (pixels):", kernel_size)
-        kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, 
-                                                (kernel_size, kernel_size))
+        kernel_dilate = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
         
         dilated = cv2.dilate(cleaned, kernel_dilate, iterations=1)
-        
-        # Step 6: Convert to binary occupancy grid (0 and 1)
-        # 255 -> 1 (obstacle), 0 -> 0 (free space)
-        occupancy_grid = (dilated > 0).astype(np.int8)
-        occupancy_grid[occupancy_grid==1] = -1
-        
-        return occupancy_grid
 
+        # --- STEP 6: ADD FADING BORDER (COST MAP) ---
+        
+        # 1. Invert the image so obstacles are 0 (Black) and free space is 255 (White).
+        # cv2.distanceTransform calculates distance to the nearest ZERO pixel.
+        inv_dilated = cv2.bitwise_not(dilated)
+        
+        # 2. Calculate Distance Transform
+        # 'dist_img' contains the distance (in pixels) from every point to the nearest obstacle
+        dist_img = cv2.distanceTransform(inv_dilated, cv2.DIST_L2, 5)
+        
+        # 3. Define how big the fading zone should be (e.g., 15 cm extra buffer)
+        fade_zone_cm = 7.0
+        fade_zone_px = fade_zone_cm * self.pixels_per_cm
+        
+        # 4. Create the linear gradient
+        # Formula: Intensity = 1.0 - (CurrentDistance / MaxFadeDistance)
+        # Pixels closer to obstacle -> Higher value (Whiter)
+        # Pixels far away -> 0 (Black)
+        fading_border = np.clip((1.0 - dist_img / fade_zone_px), 0.0, 1.0)
+        fading_border = (fading_border * 255).astype(np.uint8)
+        
+        # 5. Combine the Hard Obstacle with the Fading Border
+        # We use cv2.max to overlay the fade on top of the original hard obstacles
+        cost_map = cv2.max(dilated, fading_border)
+        
+        # Return the Cost Map (0-255) instead of Binary (-1/0)
+        # Note: You will need to update your path planner to understand that
+        # 255 = Wall, 100-200 = Risky, 0 = Free
+
+        # Step 7 : add obstacle on the edge of the map
+        border_thickness = int(ROBOT_WIDTH_CM * self.pixels_per_cm)
+        cv2.rectangle(cost_map, (0, 0), (cost_map.shape[1]-1, cost_map.shape[0]-1), 255, border_thickness)
+
+        if debug == True:
+            cv2.imwrite("Occupancy Grid - Grayscale.png", gray)
+            cv2.imwrite("Occupancy Grid - Blurred.png", blurred)
+            cv2.imwrite("Occupancy Grid - Binary.png", binary_copy)
+            cv2.imwrite("Occupancy Grid - Cleaned.png", cleaned)
+            cv2.imwrite("Occupancy Grid - Dilated.png", dilated)
+            cv2.imwrite("Occupancy Grid - Fading.png", cost_map)
+            cv2.imwrite("Occupancy Grid - Fading Border.png", fading_border)
+        
+        return cost_map
 
     def get_goal_position(self, frame, is_world_frame=False):
         # TODO: clean up
@@ -308,9 +343,11 @@ class Vision():
                 # Only keep markers that define the map (filter out robot/goal)
                 if marker_id in MAP_MARKERS:
                     # Get origin position (Top-Left corner = corner 0) of marker
+                    # Corner 2 is BR
                     marker_corners = corners[i][0]
-                    origin_x = marker_corners[0][0]  # Corner 0, x coordinate
-                    origin_y = marker_corners[0][1]  # Corner 0, y coordinate
+                    origin_x = marker_corners[2][0]  # Corner 0, x coordinate
+                    origin_y = marker_corners[2][1]  # Corner 0, y coordinate
+                    # add little offset to have full marker inside the map
                     markers[int(marker_id)] = (float(origin_x), float(origin_y))
         else:
             print("Impossible to capture markers")

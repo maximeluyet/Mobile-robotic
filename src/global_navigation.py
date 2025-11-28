@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 class GlobalNavigation:
     
     def __init__(self):
+        self.previous_closest_point = None
         pass
 
     def set_map(self, map_data):
@@ -20,7 +21,7 @@ class GlobalNavigation:
     def grid_search_astar(self, Map, S, G):
         ''' Perform A* search on the grid map from start S to goal G.
         Inputs:
-            Map: 2D numpy array with -1 for obstacles, 0 for free, >0 for sand cost
+            Map: 2D numpy array with 255 for obstacles, 0 for free, >0 for sand cost
             S: tuple (x, y) (column, row) for start position — NOTE: inputs are (x,y)
             G: tuple (x, y) (column, row) for goal position — NOTE: inputs are (x,y)
         Outputs:
@@ -65,7 +66,7 @@ class GlobalNavigation:
             for dr, dc in directions:
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < Map.shape[0] and 0 <= nc < Map.shape[1]:
-                    if Map[nr, nc] != -1:  # not an obstacle
+                    if Map[nr, nc] != 255:  # not an obstacle
                         step_cost = np.sqrt(2) if (dr != 0 and dc != 0) else 1.0
                         tentative_g = current_g + step_cost + Map[nr, nc]
                         neighbor = (nr, nc)
@@ -156,9 +157,10 @@ class GlobalNavigation:
                     min_dist = dist
                     closest_point = proj
         if closest_point is None:
-            return None
+            return self.previous_closest_point  # fallback if no projection found
         # convert from (row,col) to image frame (x,y)
         closest_point_image_frame = np.array([closest_point[1], closest_point[0]], dtype=float)
+        self.previous_closest_point = closest_point_image_frame
         return closest_point_image_frame
     
     def project_point_onto_line(self, point, line_start, line_end):
@@ -266,7 +268,7 @@ class GlobalNavigation:
         """Display the grid map with semi-transparent overlays for sand and explored cells.
 
         - free cells (Map == 0) shown as white
-        - obstacles (Map == -1) shown as black
+        - obstacles (Map == 255) shown as black
         - sand cells (Map > 0) blended with a sandy tint
         - explored cells blended with a light gray overlay
         - path, start, goal drawn solid on top
@@ -275,7 +277,7 @@ class GlobalNavigation:
 
         # Base image: free = white, obstacles = black
         base = np.ones((h, w, 3), dtype=float)
-        obs_mask = (Map == -1)
+        obs_mask = (Map == 255)
         base[obs_mask] = (0.0, 0.0, 0.0)
 
         # Sand overlay: Map > 0
@@ -297,9 +299,9 @@ class GlobalNavigation:
         # Draw path, start, goal on top as solid colors
         for cell in path8:
             base[cell] = (0.0, 1.0, 0.0)  # Path - green
-        # start = SearchStart[:2].astype(int)
+        # start = [int(SearchStart[1]), int(SearchStart[0])]
         # base[start] = (0.0, 0.0, 1.0)  # Start - blue
-        # goal = SearchGoal[:2].astype(int)
+        # goal = [int(SearchGoal[1]), int(SearchGoal[0])]
         # base[goal] = (1.0, 0.0, 0.0)   # Goal - red
 
         plt.figure(figsize=(12, 12))

@@ -147,7 +147,7 @@ class ThymioClient:
 #     print(f"Time: {time.time() - start:.2f}s")
 #     print(f"Prox: {prox}, V_L: {v_l}, V_R: {v_r}, Ground: {ground}")
 
-#     client.wait(0.2)
+#     client.wait(0.1)
 
 
 # client.set_motors(0, 0)
