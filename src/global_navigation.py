@@ -7,6 +7,7 @@ class GlobalNavigation:
     
     def __init__(self):
         self.previous_closest_point = None
+        self.last_segment_index = 0
         pass
 
     def set_map(self, map_data):
@@ -42,6 +43,7 @@ class GlobalNavigation:
         g_costs = {S: 0.0}
         explored = set()
         operation_count = 0
+        self.last_segment_index = 0
 
         open_set = [(self.heuristic(S, G), 0.0, S)]  # (f, g, pos)
 
@@ -205,23 +207,27 @@ class GlobalNavigation:
         # find which segment contains the closest point (or nearest segment)
         seg_idx = None
         proj_point = None
-        for i in range(len(pts) - 1):
+        search_start = self.last_segment_index - 2 if self.last_segment_index - 2 >= 0 else 0
+        search_end = len(pts) - 1 if self.last_segment_index + 4 >= len(pts) - 1 else self.last_segment_index + 4
+        for i in range(self.last_segment_index, search_end):
             s = pts[i]
             e = pts[i + 1]
             proj = self.project_point_onto_line(cp, s, e)
             if self.is_point_on_segment(proj, s, e):
                 seg_idx = i
                 proj_point = proj
+                self.last_segment_index = seg_idx  # remember for next time
                 break
         # if none, find nearest segment by distance
         if seg_idx is None:
             min_dist = float('inf')
-            for i in range(len(pts) - 1):
+            for i in range(self.last_segment_index, search_end):
                 s = pts[i]
                 e = pts[i + 1]
                 proj = self.project_point_onto_line(cp, s, e)
                 dist = np.linalg.norm(proj - cp)
                 if dist < min_dist:
+                    self.last_segment_index = i
                     min_dist = dist
                     seg_idx = i
                     proj_point = proj
@@ -334,9 +340,9 @@ class GlobalNavigation:
 
     def look_ahead(self, velocity):
         ''' Simple look-ahead distance based on velocity '''
-        # Parameters (get param from config)
-        alpha = self.config['navigation']['look_ahead_alpha']
-        constant = self.config['navigation']['look_ahead_constant']
+
+        alpha = 2.0
+        constant = 3.0
         return int(velocity * alpha) + constant  # e.g., 2 cells per unit velocity
     
     def direction_attraction(self, robot_pose, target_pose):
