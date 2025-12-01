@@ -136,7 +136,7 @@ class Vision():
         # -----------------------------------------
 
         # Step 4: Morphological operations (Clean up noise)
-        kernel_noise = np.ones((3, 3), np.uint8)
+        kernel_noise = np.ones((5, 5), np.uint8)
         cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel_noise, iterations=1)
         cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel_noise, iterations=1)
 

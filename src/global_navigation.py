@@ -5,21 +5,22 @@ import matplotlib.pyplot as plt
 
 class GlobalNavigation:
     
-    def __init__(self):
+    def __init__(self): # Checked, seems correct
         self.previous_closest_point = None
         self.last_segment_index = 0
+        self.segment_id = 0
         pass
 
-    def set_map(self, map_data):
+    def set_map(self, map_data): # Checked, seems correct
         ''' Set the environment map for navigation.'''
         self.Map100 = map_data
 
-    def heuristic(self, a, b):
+    def heuristic(self, a, b): # Checked, seems correct
         dx = abs(a[0] - b[0])
         dy = abs(a[1] - b[1])
         return (dx + dy) + (np.sqrt(2) - 2) * min(dx, dy)
 
-    def grid_search_astar(self, Map, S, G):
+    def grid_search_astar(self, Map, S, G): # Checked, seems correct
         ''' Perform A* search on the grid map from start S to goal G.
         Inputs:
             Map: 2D numpy array with 255 for obstacles, 0 for free, >0 for sand cost
@@ -92,7 +93,7 @@ class GlobalNavigation:
 
         return None, explored, operation_count
 
-    def grid_path_smoothing(self, path, Map):
+    def grid_path_smoothing(self, path, Map): # Checked, seems correct but not perfect create very small segments
         ''' Smooth the given path by removing unnecessary waypoints.'''
         if not path or len(path) < 3:
             return path
@@ -109,7 +110,7 @@ class GlobalNavigation:
             i = j
         return smoothed_path
     
-    def is_line_free(self, start, end, Map):
+    def is_line_free(self, start, end, Map): # Checked, seems correct
         ''' Check if the line between start and end is free of obstacles.'''
         x1, y1 = start
         x2, y2 = end
@@ -131,57 +132,90 @@ class GlobalNavigation:
             if err2 < dx:
                 err += dx
                 y1 += sy
-        return True
+        return True    
 
-    # def find_closest_point_on_path(self, robot_pose, path):
-    #     ''' Find the closest point on the path to the robot's current position.'''
-    #     min_dist = float('inf')
-    #     closest_idx = 0
-    #     for i, point in enumerate(path):
-    #         dist = np.sqrt((point[0] - robot_pose[0])**2 + (point[1] - robot_pose[1])**2)
-    #         if dist < min_dist:
-    #             min_dist = dist
-    #             closest_idx = i
-    #     return closest_idx
+    def find_closest_point_smoothed_path(self, robot_pose, smoothed_path): # Checked, seems correct
+            '''Find closest point on smoothed path (segment or vertex) to robot_pose.'''
+            
+            # 1. Convert Robot (X, Y) -> (Row, Col) to match path format
+            robot_pose_rc = np.array([robot_pose[1], robot_pose[0]], dtype=float)
+            
+            min_dist_sq = float('inf')
+            closest_point_rc = None
+
+            # 2. Iterate over all segments
+            for i in range(len(smoothed_path) - 1):
+                segment_start = np.array(smoothed_path[i])
+                segment_end = np.array(smoothed_path[i + 1])
+                
+                # Vector definitions
+                seg_vec = segment_end - segment_start
+                point_vec = robot_pose_rc - segment_start
+                
+                # Squared length of the segment
+                seg_len_sq = np.dot(seg_vec, seg_vec)
+                
+                if seg_len_sq == 0:
+                    # Start and end are the same point
+                    candidate_point = segment_start
+                else:
+                    # Calculate projection factor t
+                    t = np.dot(point_vec, seg_vec) / seg_len_sq
+                    
+                    # --- THE FIX: CLAMP T ---
+                    # If t < 0, we clamp to 0 (Start Point)
+                    # If t > 1, we clamp to 1 (End Point)
+                    # If 0 <= t <= 1, we keep the perpendicular projection
+                    t_clamped = np.clip(t, 0.0, 1.0)
+                    
+                    # Calculate the actual point on the segment
+                    candidate_point = segment_start + t_clamped * seg_vec
+                
+                # Check distance (squared is faster for comparisons)
+                diff = candidate_point - robot_pose_rc
+                dist_sq = np.dot(diff, diff)
+                
+                if dist_sq < min_dist_sq:
+                    min_dist_sq = dist_sq
+                    closest_point_rc = candidate_point
+                    self.segment_id = i
+
+            # 3. Fallback logic
+            if closest_point_rc is None:
+                return self.previous_closest_point
+
+            # 4. Convert Result (Row, Col) -> (X, Y)
+            # Note: Your original code returns (Y, X) based on the inputs provided
+            closest_point_xy = np.array([closest_point_rc[1], closest_point_rc[0]], dtype=float)
+            self.previous_closest_point = closest_point_xy
+            
+            return closest_point_xy
     
-    def find_closest_point_smoothed_path(self, robot_pose, smoothed_path):
-        '''Find closest perpendicular point on smoothed path to robot_pose.'''
-        robot_pose = np.array([robot_pose[1], robot_pose[0]], dtype=float)
-        min_dist = float('inf')
-        closest_point = None
-        for i in range(len(smoothed_path) - 1):
-            segment_start = smoothed_path[i]
-            segment_end = smoothed_path[i + 1]
-            proj = self.project_point_onto_line(robot_pose, segment_start, segment_end)
-            if self.is_point_on_segment(proj, segment_start, segment_end):
-                dist = np.linalg.norm(proj - robot_pose)
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_point = proj
-        if closest_point is None:
-            return self.previous_closest_point  # fallback if no projection found
-        # convert from (row,col) to image frame (x,y)
-        closest_point_image_frame = np.array([closest_point[1], closest_point[0]], dtype=float)
-        self.previous_closest_point = closest_point_image_frame
-        return closest_point_image_frame
-    
-    def project_point_onto_line(self, point, line_start, line_end):
+    def project_point_onto_line(self, point, line_start, line_end): # Checked, seems correct
         ''' Project a point onto a line defined by two points.'''
+        # Vector representing the line
         line_vec = np.array(line_end) - np.array(line_start)
+        # Vector from line_start to the point
         point_vec = np.array(point) - np.array(line_start)
+        # line vector squared
         line_len_sq = np.dot(line_vec, line_vec)
+        # Handle degenerate case where line_start == line_end
         if line_len_sq == 0:
             return np.array(line_start)
+        # Else project point onto line, scalar part
         t = np.dot(point_vec, line_vec) / line_len_sq
+        # Compute the projection point
         projection = np.array(line_start) + t * line_vec
         return projection
     
-    def is_point_on_segment(self, point, seg_start, seg_end):
+    def is_point_on_segment(self, point, seg_start, seg_end): # Checked, seems correct
         ''' Check if a point is on the line segment defined by seg_start and seg_end.'''
         crossproduct = (point[1] - seg_start[1]) * (seg_end[0] - seg_start[0]) - (point[0] - seg_start[0]) * (seg_end[1] - seg_start[1])
+        # Alignment check
         if abs(crossproduct) > 1e-6:
             return False  # not collinear
         dotproduct = (point[0] - seg_start[0]) * (seg_end[0] - seg_start[0]) + (point[1] - seg_start[1]) * (seg_end[1] - seg_start[1])
+        # Check if point is within segment bounds
         if dotproduct < 0:
             return False
         squaredlengthba = (seg_end[0] - seg_start[0])**2 + (seg_end[1] - seg_start[1])**2
@@ -189,16 +223,15 @@ class GlobalNavigation:
             return False
         return True
     
-    def target_point(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False):
+    def target_point(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False): #TODO CORRECT
         '''Travel a certain distance along a path starting from a point on the path.
 
         Extended: when return_angles=True the function returns a tuple
         (target_point, closest_segment_angle, target_segment_angle) where angles
         are in radians and computed relative to the x-axis (columns).
         '''
-        # Thee closest_point_on_path is a coordinate on a smoothed path
-        closest_point_on_path = [closest_point_on_path[1], closest_point_on_path[0]]  # (row, col) -> (x, y)
-        cp = np.array(closest_point_on_path, dtype=float)
+        # The closest_point_on_path is a coordinate on a smoothed path
+        cp = np.array([closest_point_on_path[1], closest_point_on_path[0]], dtype=float)  # (row, col) -> (x, y)
         if path is None:
             raise ValueError("path must be provided when closest_point_on_path is a coordinate")
 
@@ -207,30 +240,30 @@ class GlobalNavigation:
         # find which segment contains the closest point (or nearest segment)
         seg_idx = None
         proj_point = None
-        search_start = self.last_segment_index - 2 if self.last_segment_index - 2 >= 0 else 0
-        search_end = len(pts) - 1 if self.last_segment_index + 4 >= len(pts) - 1 else self.last_segment_index + 4
-        for i in range(self.last_segment_index, search_end):
-            s = pts[i]
-            e = pts[i + 1]
-            proj = self.project_point_onto_line(cp, s, e)
-            if self.is_point_on_segment(proj, s, e):
+        for i in range(len(pts) - 1):
+            start = pts[i]
+            end = pts[i + 1]
+            proj = self.project_point_onto_line(cp, start, end)
+            if self.is_point_on_segment(proj, start, end):
                 seg_idx = i
                 proj_point = proj
                 self.last_segment_index = seg_idx  # remember for next time
+                #print("Found segment index:", seg_idx)
                 break
         # if none, find nearest segment by distance
         if seg_idx is None:
             min_dist = float('inf')
-            for i in range(self.last_segment_index, search_end):
-                s = pts[i]
-                e = pts[i + 1]
-                proj = self.project_point_onto_line(cp, s, e)
+            for i in range(len(pts) - 1):
+                start = pts[i]
+                end = pts[i + 1]
+                proj = self.project_point_onto_line(cp, start, end)
                 dist = np.linalg.norm(proj - cp)
                 if dist < min_dist:
                     self.last_segment_index = i
                     min_dist = dist
                     seg_idx = i
                     proj_point = proj
+            #print("Using nearest segment index:", seg_idx)
 
         # now advance from proj_point along the path by look_ahead_distance
         remaining = float(look_ahead_distance)
@@ -270,6 +303,54 @@ class GlobalNavigation:
             return pts[-1], closest_seg_angle, last_angle
         return pts[-1]
 
+    def target_point_2(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False): #TODO CORRECT
+        '''Travel a certain distance along a path starting from a point on the path.
+
+        Extended: when return_angles=True the function returns a tuple
+        (target_point, closest_segment_angle, target_segment_angle) where angles
+        are in radians and computed relative to the x-axis (columns).
+        '''
+        # The closest_point_on_path is a coordinate on a smoothed path
+        cp = np.array([closest_point_on_path[1], closest_point_on_path[0]], dtype=float)  # (row, col) -> (x, y)
+        if path is None:
+            raise ValueError("path must be provided when closest_point_on_path is a coordinate")
+
+        # walk along the path starting from the projection point
+        pts = [np.array(p, dtype=float) for p in path]
+        # find which segment contains the closest point (or nearest segment)
+        seg_idx = self.segment_id
+        proj_point = self.project_point_onto_line(cp, pts[seg_idx], pts[seg_idx + 1])
+        # now advance from proj_point along the path by look_ahead_distance
+        remaining = float(look_ahead_distance)
+        # First consume the remainder of current segment
+        start_seg_end = pts[seg_idx + 1]
+        to_end = np.linalg.norm(start_seg_end - proj_point)
+        # compute angle of the closest segment (row delta, col delta -> atan2(dy,dx))
+        closest_seg_angle = float(np.arctan2(start_seg_end[0]-pts[seg_idx][0], start_seg_end[1]-pts[seg_idx][1]))
+        if remaining <= to_end:
+            t = remaining / to_end if to_end > 0 else 0.0
+            target = proj_point + t * (start_seg_end - proj_point)
+            if return_angles:
+                return target, closest_seg_angle
+            return target
+        remaining -= to_end
+        # advance through subsequent full segments
+        for j in range(seg_idx + 1, len(pts) - 1):
+            s = pts[j]
+            e = pts[j + 1]
+            seg_len = np.linalg.norm(e - s)
+            if seg_len >= remaining:
+                t = remaining / seg_len if seg_len > 0 else 0.0
+                target = s + t * (e - s)
+                if return_angles:
+                    return target, closest_seg_angle
+                return target
+            remaining -= seg_len
+        # if we get here, return the last waypoint
+        if return_angles:
+            return pts[-1], closest_seg_angle
+        return pts[-1]
+    
     def display_map(self, Map, path8, SearchStart, SearchGoal, explored8, smoothed_path=None, robot_pose=None, closest_point=None, target_point=None, attractive_vector=None):
         """Display the grid map with semi-transparent overlays for sand and explored cells.
 
@@ -337,15 +418,8 @@ class GlobalNavigation:
                           head_width=1.0, head_length=1.0, fc='k', ec='k', label='Attractive Vector')
         plt.legend()
         plt.show()
-
-    def look_ahead(self, velocity):
-        ''' Simple look-ahead distance based on velocity '''
-
-        alpha = 2.0
-        constant = 3.0
-        return int(velocity * alpha) + constant  # e.g., 2 cells per unit velocity
     
-    def direction_attraction(self, robot_pose, target_pose):
+    def direction_attraction(self, robot_pose, target_pose): # Useless
         dir_vector = np.array(target_pose) - np.array(robot_pose)
         norm = np.linalg.norm(dir_vector)
         if norm == 0:

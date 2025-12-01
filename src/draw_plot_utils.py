@@ -15,7 +15,7 @@ def draw_pose(img, pose, color):
     x2 = int(x + 20 * np.cos(theta))
     y2 = int(y + 20 * np.sin(theta))
     #cv2.line(img, (x, y), (x2, y2), color, 2)
-    cv2.arrowedLine(img, (x, y), (x2, y2), color, thickness=2)
+    cv2.arrowedLine(img, (x, y), (x2, y2), color, thickness=1, tipLength=0.3)
 
 def draw_path(img, path, color):
     for idx in range((len(path))-1):
@@ -26,13 +26,14 @@ def draw_path(img, path, color):
         y = int(y)
         x_after = int(x_after)
         y_after = int(y_after)
-        cv2.line(img, (x, y), (x_after, y_after), color, 2)
+        cv2.circle(img, (x, y),radius=1, color=0)
+        cv2.line(img, (x, y), (x_after, y_after), color, thickness=1)
 
 def draw_point(img, point, color):
     x, y = point
     x = int(x)
     y = int(y)
-    cv2.circle(img, (x, y), 7, color, -1)
+    cv2.circle(img, (x, y), 4, color, -1)
 
 
 def plot_covariance_ellipse(mean, cov, ax=None, n_std=2.0, **kwargs):
