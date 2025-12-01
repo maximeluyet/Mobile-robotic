@@ -6,16 +6,16 @@ STATE_DIM = 3
 INPUT_DIM = 2
 
 # Initial state covariance matrix
-P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: currently zero, get unit
+P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: analyze & tune more
 
 # Process noise covariance matrix (wheel speed noise)
-Q = np.eye(INPUT_DIM) * 25 # TODO: currently identity -> measure, get unit
+Q = np.eye(INPUT_DIM) * 25 # TODO: analyze & tune more
 
 # Measurement noise covariance matrix (camera noise)
-R = np.eye(STATE_DIM) * 1 # TODO: currently identity -> measure, get unit
+R = np.eye(STATE_DIM) * 1 # TODO: analyze & tune more
 R[2, 2] = 1.2
 
-WHEEL_BASE = 94 # mm # TODO: correct maybe
+WHEEL_BASE = 94 # mm
 
 
 class ExtendedKalmanFilter:
