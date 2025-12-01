@@ -36,7 +36,7 @@ class Vision():
         # Map configuration (will be calculated after detecting corners)
         self.M = None                   # perspective warp matrix
         self.map_size_pixels = None     # map size in pixels 
-        self.pixels_per_cm = None       # 
+        self.pixels_per_cm = None       # conversion rate 
     
 
     def set_camera_parameters(self, camera_parameters):
