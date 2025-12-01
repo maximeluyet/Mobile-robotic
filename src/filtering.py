@@ -21,7 +21,7 @@ WHEEL_BASE = 94 # mm
 class ExtendedKalmanFilter:
     ''' Extended Kalman Filter implementation for state estimation. '''
     
-    def __init__(self):
+    def __init__(self, keepHist=False):
         
         self.initialized = False
 
