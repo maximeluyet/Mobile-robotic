@@ -4,7 +4,7 @@ import math
 
 
 # Tunables
-k_rho, k_alpha, k_beta = 1,1,-1 # 0.6, 1.2, -0.3
+k_rho, k_alpha, k_beta = 1.5,2.2,-1.0 # 0.6, 1.2, -0.3
 l = 0.047  # half axle length [m](adjust%20for%20Thymio%20~%2094%20mm%20axle)
 r = 0.022  # wheel radius [m](adjust%20for%20Thymio%20wheel)
 scale = 20  # maps rad/s to motor target units (tune)
@@ -39,9 +39,9 @@ class Control:
 
         # Control law
         v = k_rho * rho
-        print("v =", v)
+        # print("v =", v)
         omega = k_alpha * alpha + k_beta * beta
-        print("omega =", omega)
+        # print("omega =", omega)
 
         # Map to wheels
         wL = (v - l*omega)/r
