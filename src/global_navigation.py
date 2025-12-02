@@ -9,11 +9,6 @@ class GlobalNavigation:
         self.previous_closest_point = None
         self.last_segment_index = 0
         self.segment_id = 0
-        pass
-
-    def set_map(self, map_data): # Checked, seems correct
-        ''' Set the environment map for navigation.'''
-        self.Map100 = map_data
 
     def heuristic(self, a, b): # Checked, seems correct
         dx = abs(a[0] - b[0])
@@ -222,88 +217,8 @@ class GlobalNavigation:
         if dotproduct > squaredlengthba:
             return False
         return True
-    
-    def target_point(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False): #TODO CORRECT
-        '''Travel a certain distance along a path starting from a point on the path.
 
-        Extended: when return_angles=True the function returns a tuple
-        (target_point, closest_segment_angle, target_segment_angle) where angles
-        are in radians and computed relative to the x-axis (columns).
-        '''
-        # The closest_point_on_path is a coordinate on a smoothed path
-        cp = np.array([closest_point_on_path[1], closest_point_on_path[0]], dtype=float)  # (row, col) -> (x, y)
-        if path is None:
-            raise ValueError("path must be provided when closest_point_on_path is a coordinate")
-
-        # walk along the path starting from the projection point
-        pts = [np.array(p, dtype=float) for p in path]
-        # find which segment contains the closest point (or nearest segment)
-        seg_idx = None
-        proj_point = None
-        for i in range(len(pts) - 1):
-            start = pts[i]
-            end = pts[i + 1]
-            proj = self.project_point_onto_line(cp, start, end)
-            if self.is_point_on_segment(proj, start, end):
-                seg_idx = i
-                proj_point = proj
-                self.last_segment_index = seg_idx  # remember for next time
-                #print("Found segment index:", seg_idx)
-                break
-        # if none, find nearest segment by distance
-        if seg_idx is None:
-            min_dist = float('inf')
-            for i in range(len(pts) - 1):
-                start = pts[i]
-                end = pts[i + 1]
-                proj = self.project_point_onto_line(cp, start, end)
-                dist = np.linalg.norm(proj - cp)
-                if dist < min_dist:
-                    self.last_segment_index = i
-                    min_dist = dist
-                    seg_idx = i
-                    proj_point = proj
-            #print("Using nearest segment index:", seg_idx)
-
-        # now advance from proj_point along the path by look_ahead_distance
-        remaining = float(look_ahead_distance)
-        # First consume the remainder of current segment
-        start_seg_end = pts[seg_idx + 1]
-        to_end = np.linalg.norm(start_seg_end - proj_point)
-        # compute angle of the closest segment (row delta, col delta -> atan2(dy,dx))
-        closest_seg_angle = float(np.arctan2(start_seg_end[0]-pts[seg_idx][0], start_seg_end[1]-pts[seg_idx][1]))
-        if remaining <= to_end:
-            t = remaining / to_end if to_end > 0 else 0.0
-            target = proj_point + t * (start_seg_end - proj_point)
-            if return_angles:
-                return target, closest_seg_angle, closest_seg_angle
-            return target
-        remaining -= to_end
-        # advance through subsequent full segments
-        for j in range(seg_idx + 1, len(pts) - 1):
-            s = pts[j]
-            e = pts[j + 1]
-            seg_len = np.linalg.norm(e - s)
-            if seg_len >= remaining:
-                t = remaining / seg_len if seg_len > 0 else 0.0
-                target = s + t * (e - s)
-                if return_angles:
-                    target_seg_angle = float(np.arctan2(e[0]-s[0], e[1]-s[1]))
-                    return target, closest_seg_angle, target_seg_angle
-                return target
-            remaining -= seg_len
-        # if we get here, return the last waypoint
-        if return_angles:
-            # angle of last segment
-            if len(pts) >= 2:
-                s = pts[-2]; e = pts[-1]
-                last_angle = float(np.arctan2(e[0]-s[0], e[1]-s[1]))
-            else:
-                last_angle = 0.0
-            return pts[-1], closest_seg_angle, last_angle
-        return pts[-1]
-
-    def target_point_2(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False): #TODO CORRECT
+    def target_point(self, closest_point_on_path, look_ahead_distance, path=None, return_angles=False): #Checked, seems correct
         '''Travel a certain distance along a path starting from a point on the path.
 
         Extended: when return_angles=True the function returns a tuple
