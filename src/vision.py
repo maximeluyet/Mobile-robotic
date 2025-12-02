@@ -5,7 +5,7 @@ import threading
 # Global constants
 
 # TODO: detail: in the end maybe add to vision class since they are only used there...
-ROBOT_WIDTH_CM = 13.0
+ROBOT_WIDTH_CM = 11.0
 MAP_SIZE_CM = (95.0, 60.0)  # Width x Height in cm
 
 MAP_MARKERS_OLD = [69, 42, 23, 30]  # IDs for the 4 corners: [TL, TR, BL, BR]
@@ -190,7 +190,7 @@ class Vision():
         # 255 = Wall, 100-200 = Risky, 0 = Free
 
         # Step 7 : add obstacle on the edge of the map
-        border_thickness = int(ROBOT_WIDTH_CM * self.pixels_per_cm)
+        border_thickness = int(ROBOT_WIDTH_CM * self.pixels_per_cm/2)
         cv2.rectangle(cost_map, (0, 0), (cost_map.shape[1]-1, cost_map.shape[0]-1), 255, border_thickness)
 
         if debug == True:
