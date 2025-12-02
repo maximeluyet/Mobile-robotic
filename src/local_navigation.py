@@ -39,7 +39,7 @@ class LocalNavigation:
             self.x[7] = self.direction_repulsion[0] / 10.0
             self.x[8] = self.direction_repulsion[1] / 10.0
 
-            # Safely read up to 7 sensor inputs (guard against short lists)
+            # Safely read up to 7 sensor inputs
             max_inputs = min(7, len(sensor_data))
             for i in range(max_inputs):
                 # Get and scale inputs (use float division)

@@ -2,53 +2,60 @@
 import numpy as np
 import math
 
-
-# Tunables
-k_rho, k_alpha, k_beta = 1.5,2.2,-1.0 # 0.6, 1.2, -0.3
-l = 0.047  # half axle length [m](adjust%20for%20Thymio%20~%2094%20mm%20axle)
-r = 0.022  # wheel radius [m](adjust%20for%20Thymio%20wheel)
-scale = 20  # maps rad/s to motor target units (tune)
-rho_stop = 0.03  # [m]
-
 class Control:
     ''' Main control class'''
 
     def __init__(self):
-        pass
+        self.rho_stop = 0.02  # [m]
+        self.k_rho = 1.5
+        self.k_alpha = 2.2
+        self.k_beta = -1.0
+        self.l = 0.047  # half axle length [m]
+        self.r = 0.022  # wheel radius [m]
+        self.scale = 20  # maps rad/s to motor target units (tune)
 
     # Helpers
-    def wrapToPi(self, a):
+    def wrapToPi(self, a): # wrap angle to [-pi, pi]
         while a > math.pi: 
             a -= 2*math.pi
         while a < -math.pi: 
             a += 2*math.pi
         return a
     
-    def control(self,robot_pose, goal_pose):
-        ''' Astolfi Controller for position control'''
+    def control(self, robot_pose, goal_pose):
+        ''' 
+        Astolfi Controller (Forward Only)
+        robot_pose: [x, y, theta]
+        goal_pose:  [x, y, theta]
+        '''
+        # 1. Calculate Error Vector
         dx = goal_pose[0] - robot_pose[0]
         dy = goal_pose[1] - robot_pose[1]
+        
         rho = math.hypot(dx, dy)
-        if rho < rho_stop:
-            # Final orientation alignment
-                alpha = 0.0
-                beta  = self.wrapToPi(goal_pose[2] - robot_pose[2])
-        else:
-            alpha = self.wrapToPi(math.atan2(dy, dx) - robot_pose[2])
-            beta  = self.wrapToPi(goal_pose[2] - robot_pose[2] - alpha)
+        theta = robot_pose[2]
 
-        # Control law
-        v = k_rho * rho
-        # print("v =", v)
-        omega = k_alpha * alpha + k_beta * beta
-        # print("omega =", omega)
+        # Calculate alpha (Angle to goal relative to robot)
+        alpha = self.wrapToPi(- theta + math.atan2(dy, dx))
+        
+        # Calculate beta (Goal orientation relative to line of sight)
+        beta  = self.wrapToPi(- theta - alpha)
+        
+        # Standard Control Law (Always Forward)
+        v = self.k_rho * rho
 
-        # Map to wheels
-        wL = (v - l*omega)/r
-        wR = (v + l*omega)/r
+        # 3. Calculate Omega
+        # Note: If alpha is large (target behind), this creates a strong turn 
+        # while 'v' pushes forward, resulting in a curve.
+        omega = self.k_alpha * alpha + self.k_beta * beta
 
-        # Convert to Thymio units and saturate
-        left_wheel_speed = int(max(min(scale * wL, 400), -400))
-        right_wheel_speed = int(max(min(scale * wR, 400), -400))
+        # 4. Map to wheels (Differential Drive)
+        # Assumes 'l' is the distance between wheels (track width)
+        wL = (v - (self.l * omega) / 2) / self.r
+        wR = (v + (self.l * omega) / 2) / self.r
+
+        # 5. Convert to Thymio units and saturate
+        left_wheel_speed = int(max(min(self.scale * wL, 400), -400))
+        right_wheel_speed = int(max(min(self.scale * wR, 400), -400))
 
         return (left_wheel_speed, right_wheel_speed)
