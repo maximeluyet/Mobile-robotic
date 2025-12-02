@@ -7,21 +7,22 @@ from datetime import datetime
 # Configuration
 CAMERA_ID = 0  # ID de la caméra (0 pour webcam intégrée, 1 pour caméra externe)
 IMAGE_RES = (1920, 1080)  # Résolution de la caméra
-NUM_IMAGES_REQUIRED = 20  # Nombre d'images requises pour la calibration
+NUM_IMAGES_REQUIRED = 15  # Nombre d'images requises pour la calibration
 CHESSBOARD_SIZE = (9, 6)  # Nombre de coins intérieurs du damier (colonnes, lignes)
 SQUARE_SIZE = 2.5  # Taille d'un carré en cm (pour mesures réelles)
-OUTPUT_DIRECTORY = 'calibration_output'  # Répertoire de sortie
+
+# Répertoire de sortie - toujours dans le même dossier que ce script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_DIRECTORY = os.path.join(SCRIPT_DIR, 'calibration_output')
 
 # Liste de tailles alternatives à essayer si la détection échoue
-ALTERNATIVE_SIZES = [
-    (9, 6), (6, 9), (8, 6), (6, 8), (7, 5), (5, 7),
-    (10, 7), (7, 10), (8, 5), (5, 8), (7, 6), (6, 7)
-]
+ALTERNATIVE_SIZES = [(9, 6)]
 
 def capture_calibration_images():
     """
     Capture interactive d'images de calibration avec l'utilisateur.
-    L'utilisateur doit prendre 20 photos d'un damier sous différents angles.
+    L'utilisateur doit prendre 15
+      photos d'un damier sous différents angles.
     
     Returns:
         List of captured images
