@@ -402,17 +402,13 @@ class Camera:
             self.cap = None
             self.running = False
             return
-        
         else:
             print(f"Camera with ID {self.cam_id} opened successfully.")
-
+            
         self.ret, self.frame = self.cap.read()
-
         self.running = True
-
         # launch thread
         threading.Thread(target=self.update, args=(), daemon=True).start()
-
         print("Camera thread launched")
 
 
