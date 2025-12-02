@@ -5,11 +5,8 @@ import time
 # Module constants:
 STATE_DIM = 3
 
-# Initial state covariance matrix
-P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: analyze & tune more
-
 # Process noise covariance matrix
-Q = np.eye(STATE_DIM) * 0.3 # TODO: analyze & tune more
+Q = np.diag([0.002, 0.001, 0.05]) # TODO: analyze & tune more
 
 # Measurement noise covariance matrix (camera noise)
 R = np.eye(STATE_DIM) * 0.01 # TODO: analyze & tune more
@@ -44,7 +41,7 @@ class ExtendedKalmanFilter:
         self.x = camera_pose_m.copy()
         
         # Initialize covariance
-        self.P = P_INIT
+        self.P = R.copy()
 
         self.initialized = True
     
@@ -109,6 +106,14 @@ class ExtendedKalmanFilter:
         # Return the ekf history
 
         return self.pose_hist, self.cov_hist, self.meas_hist
+    
+
+    def clear_history(self):
+        # Clear the ekf history
+
+        self.pose_hist = []
+        self.cov_hist = []
+        self.meas_hist = []
     
 
     @staticmethod
