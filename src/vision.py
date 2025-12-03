@@ -6,7 +6,8 @@ import threading
 
 # TODO: detail: in the end maybe add to vision class since they are only used there...
 ROBOT_WIDTH_CM = 11.0
-MAP_SIZE_CM = (95.0, 60.0)  # Width x Height in cm
+MAP_SIZE_CM = (105.0, 70.0)  # Width x Height in cm
+ARUCO_SIZE_CM = 10.0
 
 #ArUco marker IDs configuration
 MAP_MARKERS = [42, 30, 69, 23]  # IDs for the 4 corners: [TL, TR, BL, BR]
