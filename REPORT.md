@@ -681,6 +681,41 @@ The robot's behavior is orchestrated by a **finite state machine** that coordina
 This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
 
 ![](img/state_diagram_mobile.png)
+<img src="img/astolfi.png" width="600" height="450" />
 
-# TODO
+Compute the relevant angles and distances:
+
+$$
+\begin{aligned}
+\rho &= \sqrt{\Delta x^2 + \Delta y^2} \\
+\alpha &= -\theta + \operatorname{atan2}(\Delta y, \Delta x) \\
+\beta &= \beta_{desired} -\theta - \alpha
+\end{aligned}
+$$
+We can compute the control law as:
+$$
+v = k_{\rho} \rho
+$$
+$$
+\omega = k_{\alpha} \alpha + k_{\beta} \beta
+$$
+And the wheel speeds are given by:
+$$
+\omega_R = \frac{v}{R} + \frac{L \omega}{R}
+$$
+$$
+\omega_L = \frac{v}{R} - \frac{L \omega}{R}
+$$
+with $R$ the wheel radius and $L$ half the distance between wheels.
+
+This control law ensures that ($\rho$, $\alpha$, $\beta$) converge to ($0, 0, \beta_{desired}$), meaning the robot reaches the target point with the desired orientation.
+
+### Tuning the gains
+We augmented $k_{\rho}$ to have a faster robot speed, before the robot stability decreases.
+Same empirical approach was used to tune $k_{\alpha}$ and $k_{\beta}$.
+We obtained the following values: 
+$k_{\rho} = 1.5$, $k_{\alpha} = 2.2$, $k_{\beta} = -1.0$
+
+
+
 
