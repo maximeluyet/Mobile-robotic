@@ -33,9 +33,9 @@ class Control:
         dx = goal_pose[0] - robot_pose[0]
         dy = goal_pose[1] - robot_pose[1]
         rho = math.hypot(dx, dy)
-
-        alpha = self.wrapToPi(math.atan2(dy, dx) - robot_pose[2])
-        beta  = self.wrapToPi(goal_pose[2] - robot_pose[2] - alpha)
+        theta = robot_pose[2]
+        alpha = self.wrapToPi(math.atan2(dy, dx) - theta)
+        beta  = self.wrapToPi(goal_pose[2] - theta - alpha)
 
         # Control law
         v = self.k_rho * rho
