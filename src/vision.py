@@ -6,25 +6,20 @@ import threading
 
 # TODO: detail: in the end maybe add to vision class since they are only used there...
 ROBOT_WIDTH_CM = 11.0
-MAP_SIZE_CM = (95.0, 60.0)  # Width x Height in cm
+MAP_SIZE_CM = (105.0, 70.0)  # Width x Height in cm
+ARUCO_SIZE_CM = 10.0
 
-MAP_MARKERS_OLD = [69, 42, 23, 30]  # IDs for the 4 corners: [TL, TR, BL, BR]
+#ArUco marker IDs configuration
 MAP_MARKERS = [42, 30, 69, 23]  # IDs for the 4 corners: [TL, TR, BL, BR]
+MARKER_ROBOT = 78               # ID for the robot marker
+MARKER_GOAL = 53                # ID for the goal marker
 
-CAMERA_MATRIX = np.array([[1484.14935, 0, 964.220337],
-                          [0, 1490.50225, 539.531044],
+#Camera calibration parameters
+CAMERA_MATRIX = np.array([[1485.302933, 0, 988.156651],
+                          [0, 1502.021201, 507.050374],
                           [0, 0, 1]])
-
-CAMERA_COEFFICIENTS = np.array([0.154056967, -1.04865202, -0.000689137957, -0.00132248869, 1.48905183])
-
+CAMERA_COEFFICIENTS = np.array([0.148278, -0.767285, -0.010129, -0.007089, 1.008489])
 CAMERA_RESOLUTION = (1920, 1080)
-
-# ArUco marker IDs configuration
-# Generated markers: 23, 30, 42, 53, 69, 78
-MARKER_CORNERS = [42, 30, 69, 23]  # IDs for the 4 corners: [TL, TR, BL, BR]
-MARKER_ROBOT = 78                  # ID for the robot marker
-MARKER_GOAL = 53                   # ID for the goal marker
-ARUCO_SIZE_CM = 10.0                # Real size of ArUco markers in cm (5cm x 5cm at 300 DPI)
 
 class Vision():
     def __init__(self):
@@ -40,7 +35,7 @@ class Vision():
         # Map configuration (will be calculated after detecting corners)
         self.M = None                   # perspective warp matrix
         self.map_size_pixels = None     # map size in pixels 
-        self.pixels_per_cm = None       # 
+        self.pixels_per_cm = None       # conversion rate 
     
 
     def set_camera_parameters(self, camera_parameters):
@@ -58,12 +53,9 @@ class Vision():
         # Get undistortion matrix, undistort and crop
         h, w = frame.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(CAMERA_MATRIX, CAMERA_COEFFICIENTS, (w, h), 1, (w, h))
-
         self.distortion = newcameramtx
         self.roi = roi
-
         frame = cv2.undistort(frame, CAMERA_MATRIX, CAMERA_COEFFICIENTS, None, self.distortion)
-
         x, y, w, h = self.roi
         frame = frame[y:y+h, x:x+w]
 
@@ -402,24 +394,20 @@ class Camera:
 
     def __init__(self, cam_id=0):
         self.cam_id = cam_id
-        self.cap = cv2.VideoCapture(self.cam_id)
+        self.cap = cv2.VideoCapture(self.cam_id, cv2.CAP_DSHOW)
 
         if not self.cap.isOpened():
             print(f"Error: Unable to open camera with ID {self.cam_id}")
             self.cap = None
             self.running = False
             return
-        
         else:
             print(f"Camera with ID {self.cam_id} opened successfully.")
-
+            
         self.ret, self.frame = self.cap.read()
-
         self.running = True
-
         # launch thread
         threading.Thread(target=self.update, args=(), daemon=True).start()
-
         print("Camera thread launched")
 
 

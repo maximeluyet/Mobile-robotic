@@ -283,17 +283,43 @@ class GlobalNavigation:
         base[obs_mask] = (0.0, 0.0, 0.0)
 
         # Sand overlay: Map > 0
-        sand_mask = (Map > 0)
-        sand_color = np.array([0.92, 0.84, 0.60])
-        sand_alpha = 0.5
+        sand_mask = (Map > 0) & (Map < 255)
+        # red
+        # LOW COST COLOR (White): (1.0, 1.0, 1.0)
+        C_low = np.array([1.0, 1.0, 1.0])
+        
+        # HIGH COST COLOR (Black): (0.0, 0.0, 0.0)
+        C_high = np.array([0.0, 0.0, 0.0])
+        sand_alpha = 0.6  # Use a fixed opacity for the overlay
+
         if sand_mask.any():
-            base[sand_mask] = base[sand_mask] * (1.0 - sand_alpha) + sand_color * sand_alpha
+            # Normalize sand cost to [0,1]
+            # Use Map[sand_mask] / 255.0 to get cost (0 = free, 1 = obstacle boundary)
+            cost_norm = Map[sand_mask] / 255.0 
+            
+            # Since the normalized cost is an array, we need to perform array-wise blending.
+            # Blend components: New_Color = (1 - cost_norm) * Low_Color + cost_norm * High_Color
+            
+            # Create a 3D array of normalized costs, repeated for RGB channels
+            cost_norm_reshaped = cost_norm[:, np.newaxis] 
+            
+            # Calculate the final blended colors
+            # (1 - cost_norm) * C_low: Contribution from the Low Color (White)
+            # cost_norm * C_high: Contribution from the High Color (Black)
+            sand_colors = ((1 - cost_norm_reshaped) * C_low) + (cost_norm_reshaped * C_high)
+            
+            # --- Apply the Weighted Blend to the Base Image ---
+            # Blend the base image with the new proportional sand colors
+            # Blended_Color = (1 - alpha) * Base_Color + alpha * Overlay_Color
+            
+            base[sand_mask] = (1 - sand_alpha) * base[sand_mask] + sand_alpha * sand_colors
+            
 
         # Explored overlay (semi-transparent)
         explored_mask = np.zeros((h, w), dtype=bool)
         for cell in explored8:
             explored_mask[cell] = True
-        explored_color = np.array([0.6, 0.6, 0.6])
+        explored_color = np.array([0.0, 0.0, 1.0])
         explored_alpha = 0.35
         if explored_mask.any():
             base[explored_mask] = base[explored_mask] * (1.0 - explored_alpha) + explored_color * explored_alpha
@@ -308,7 +334,7 @@ class GlobalNavigation:
 
         plt.figure(figsize=(12, 12))
         plt.imshow(base, interpolation='nearest')
-        plt.title('Map with Path, Sand, and Explored Cells')
+        plt.title('Map with Path and Explored Cells')
         plt.axis('off')
 
         if smoothed_path:
@@ -331,7 +357,8 @@ class GlobalNavigation:
                 plt.arrow(robot_pose[1], robot_pose[0],
                           attractive_vector[1]*5, attractive_vector[0]*5,
                           head_width=1.0, head_length=1.0, fc='k', ec='k', label='Attractive Vector')
-        plt.legend()
+        # plt.legend()
+        plt.savefig('map_display.png')  # Save the figure as a PNG file
         plt.show()
     
     def direction_attraction(self, robot_pose, target_pose): # Useless

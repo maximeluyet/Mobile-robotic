@@ -192,7 +192,7 @@ def calibrate_camera(images, chessboard_size):
     # Utiliser la taille détectée ou celle par défaut
     if chessboard_size is None:
         chessboard_size = CHESSBOARD_SIZE
-    
+    cv2.calibrateCamera
     print(f"\nTaille du damier utilisée: {chessboard_size}")
     print(f"Nombre d'images: {len(images)}")
     

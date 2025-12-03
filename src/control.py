@@ -1,6 +1,7 @@
-# imports
 import numpy as np
 import math
+
+
 
 class Control:
     ''' Main control class'''
@@ -31,31 +32,22 @@ class Control:
         # 1. Calculate Error Vector
         dx = goal_pose[0] - robot_pose[0]
         dy = goal_pose[1] - robot_pose[1]
-        
         rho = math.hypot(dx, dy)
         theta = robot_pose[2]
+        alpha = self.wrapToPi(math.atan2(dy, dx) - theta)
+        beta  = self.wrapToPi(goal_pose[2] - theta - alpha)
 
-        # Calculate alpha (Angle to goal relative to robot)
-        alpha = self.wrapToPi(- theta + math.atan2(dy, dx))
-        
-        # Calculate beta (Goal orientation relative to line of sight)
-        beta  = self.wrapToPi(- theta - alpha)
-        
-        # Standard Control Law (Always Forward)
+        # Control law
         v = self.k_rho * rho
-
-        # 3. Calculate Omega
-        # Note: If alpha is large (target behind), this creates a strong turn 
-        # while 'v' pushes forward, resulting in a curve.
+        # print("v =", v)
         omega = self.k_alpha * alpha + self.k_beta * beta
+        # print("omega =", omega)
 
-        # 4. Map to wheels (Differential Drive)
-        # Assumes 'l' is the distance between wheels (track width)
-        wL = (v - (self.l * omega) / 2) / self.r
-        wR = (v + (self.l * omega) / 2) / self.r
+        # Map to wheels
+        wL = (v - self.l*omega)/self.r
+        wR = (v + self.l*omega)/self.r
 
-        # 5. Convert to Thymio units and saturate
+        # Convert to Thymio units and saturate
         left_wheel_speed = int(max(min(self.scale * wL, 400), -400))
         right_wheel_speed = int(max(min(self.scale * wR, 400), -400))
-
         return (left_wheel_speed, right_wheel_speed)

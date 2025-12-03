@@ -55,12 +55,44 @@ def plot_covariance_ellipse(mean, cov, ax=None, n_std=2.0, **kwargs):
     vals = vals[order]
     vecs = vecs[:, order]
 
-    # Width and height (2 * sqrt(lambda) * n_std)
+    # Width and height
     width, height = 2 * n_std * np.sqrt(vals)
-    # Angle of rotation (in degrees) of the largest eigenvector
+    # Angle of rotation of the largest eigenvector
     angle = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
 
+    # Draw the ellipse
     ellipse = Ellipse(xy=mean, width=width, height=height, angle=angle, **kwargs)
     ax.add_patch(ellipse)
 
     return ellipse
+
+def draw_covariance(frame, mean_img, cov_img, color, n_std=2, thickness=2):
+    """
+    Draw a covariance ellipse on an OpenCV image.
+
+    mean_img: (x, y) center in pixel coordinates
+    cov_img: 2x2 covariance matrix in image frame
+    color: BGR color
+    n_std: number of std deviations
+    """
+
+    # Eigen decomposition
+    vals, vecs = np.linalg.eigh(cov_img)
+    order = vals.argsort()[::-1]
+    vals = vals[order]
+    vecs = vecs[:, order]
+
+    # Calculate raiuses
+    axis_len = n_std * np.sqrt(vals)
+    major, minor = axis_len
+
+    axes = (int(minor), int(major))
+
+    # Ellipse angle
+    vx, vy = vecs[:, 0]
+    angle = -np.degrees(np.arctan2(vy, vx))
+
+    center = (int(mean_img[0]), int(mean_img[1]))
+
+    # Draw ellipse
+    cv2.ellipse(frame, center, axes, angle, 0, 360, color, thickness)
