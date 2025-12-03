@@ -537,7 +537,7 @@ The global navigation module is responsible for computing the optimal path from 
 
 The module provides three main functionalities:
 1. **Path planning** using A* with 8-connected grid search
-2. **Path smoothing** to reduce unnecessary waypoints
+2. **Path smoothing** to have a more natural trajectory
 3. **Path following** with dynamic target point calculation
 
 #### A* Path Planning
@@ -626,17 +626,11 @@ The function returns the candidate $C_i$ corresponding to the minimum $d^2$.
 
 The `target_point()` method advances a specified lookahead distance along the path from the closest point.
 
-It start in the closest point and move along this segment of the path. If the segment length is less than the lookahead distance, it move to the next segment and continue until the lookahead distance is reached.
+It start with the closest point and move along this segment of the path. If the segment length is less than the lookahead distance, it move to the next segment and continue until the lookahead distance is reached.
 
 <img src="img/explain_nav.png" width="850" height="508" />
 
 ### Local Navigation
-
-The local navigation module provides **reactive obstacle avoidance** using a Braitenberg-inspired architecture. While global navigation plans the strategic path, local navigation handles real-time collision avoidance using the Thymio's onboard proximity sensors.
-
-The controller combines two behavioral components:
-1. **Attractive behavior**: Follows the global path direction
-2. **Repulsive behavior**: Avoids obstacles detected by sensors
 
 #### Map sensor inputs into 2D space
 
@@ -650,11 +644,19 @@ This repulsion vector is used to know the turning direction to avoid the obstacl
 
 We turn away from the obstacle and move forward.
 
-Then we turn opposide from the previous turn to put the robot straight and to local other obstacles.
+Then we turn opposide from the previous turn to put the robot straight and to localize other obstacles.
 
-If no obstacle is detected, the robot recomputes the global path. The osbtacle should be on the side the the robot.
+If no obstacle is detected, the robot recomputes the global path. The obstacle should be on the side the the robot.
 
-This strategy enable obstacle avoidance but has limitations if the ostacle lead the robot closer to the fix obstacles.
+This strategy enable obstacle avoidance but has limitations if the obstacle lead the robot closer to the fix obstacles.
+
+<video width="800" controls>
+  <source src="img/obs_avoidance_2.mp4" type="video/mp4">
+</video>
+
+<video width="800" controls>
+  <source src="img/obs_avoidance_3.mp4" type="video/mp4">
+</video>
 
 # Motor Command Generation (Astolfi controller)
 
