@@ -171,17 +171,17 @@ frame = frame[y:y+h, x:x+w]
 
 ### ArUco Markers
 
-ArUco markers are binary square fiducial markers that can be used for camera pose estimation and object tracking. For this project, we use the **4x4_100 dictionary** from OpenCV, which provides 100 unique markers in a 4×4 grid format. Each marker is 10×10 cm in size and printed at 300 DPI (591×591 pixels) on an A0 paper that defines the working area.
+ArUco markers are binary square fiducial markers that can be used for camera pose estimation and object tracking. For this project, we use the **4x4_100 dictionary** from OpenCV, which provides 100 unique markers in a 4×4 grid format. Each marker is 10×10 cm in size and printed on an A0 paper that defines the working area.
 
 All markers were generated using the script `aruco_generation.py`, following the [OpenCV ArUco detection guide](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html).
 
 The system uses six specific markers for different purposes:
 
 **Map Corner Markers** (define the working area):
-- **ID 69**: Top-left corner
-- **ID 42**: Top-right corner  
-- **ID 23**: Bottom-left corner
-- **ID 30**: Bottom-right corner
+- **ID 42**: Top-left corner
+- **ID 30**: Top-right corner  
+- **ID 69**: Bottom-left corner
+- **ID 23**: Bottom-right corner
 
 **Dynamic Markers** (track moving elements):
 - **ID 78**: Robot marker (attached to the Thymio)
@@ -218,9 +218,9 @@ To obtain an accurate occupancy grid, a **bird's-eye view** (top-down perpendicu
 The perspective transformation is implemented through two key steps:
 
 1. **Compute the transformation matrix** using `_get_transform_matrix(corners_dict, width_px, height_px)`:
-   - Defines source points from the detected corner marker positions in the camera frame
-   - Defines destination points as a perfect rectangle in the output image
-   - Computes the transformation matrix using [`cv2.getPerspectiveTransform()`](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#ga20f62aa3235d869c9956436c870893ae)
+   - Defines source points from the detected corner marker positions in the camera frame.
+   - Defines destination points as a perfect rectangle in the output image.
+   - Computes the transformation matrix using: [`cv2.getPerspectiveTransform()`](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#ga20f62aa3235d869c9956436c870893ae)
 
 2. **Apply the transformation** using [`cv2.warpPerspective()`](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#gaf73673a7e8e18ec6963e3774e6a94b87):
    - Warps the input frame according to the computed matrix
@@ -537,7 +537,7 @@ The navigation system is divided into two complementary modules: **Global Naviga
 
 ### Global Navigation
 
-The global navigation module is responsible for computing the optimal path from the robot's current position to the goal using the cost map provided by the vision system. The implementation is based on the **A* (A-star) algorithm**, enhanced with path smoothing and a pure pursuit controller for path following.
+The global navigation module is responsible for computing the optimal path from the robot's current position to the goal using the cost map provided by the vision system. The implementation is based on the **A-star (A*) algorithm**, enhanced with path smoothing and a pure pursuit controller for path following.
 
 The module provides three main functionalities:
 1. **Path planning** using A* with 8-connected grid search
