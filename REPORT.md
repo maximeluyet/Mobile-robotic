@@ -171,17 +171,17 @@ frame = frame[y:y+h, x:x+w]
 
 ### ArUco Markers
 
-ArUco markers are binary square fiducial markers that can be used for camera pose estimation and object tracking. For this project, we use the **4x4_100 dictionary** from OpenCV, which provides 100 unique markers in a 4×4 grid format. Each marker is 10×10 cm in size and printed at 300 DPI (591×591 pixels) on an A0 paper that defines the working area.
+ArUco markers are binary square fiducial markers that can be used for camera pose estimation and object tracking. For this project, we use the **4x4_100 dictionary** from OpenCV, which provides 100 unique markers in a 4×4 grid format. Each marker is 10×10 cm in size and printed on an A0 paper that defines the working area.
 
 All markers were generated using the script `aruco_generation.py`, following the [OpenCV ArUco detection guide](https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html).
 
 The system uses six specific markers for different purposes:
 
 **Map Corner Markers** (define the working area):
-- **ID 69**: Top-left corner
-- **ID 42**: Top-right corner  
-- **ID 23**: Bottom-left corner
-- **ID 30**: Bottom-right corner
+- **ID 42**: Top-left corner
+- **ID 30**: Top-right corner  
+- **ID 69**: Bottom-left corner
+- **ID 23**: Bottom-right corner
 
 **Dynamic Markers** (track moving elements):
 - **ID 78**: Robot marker (attached to the Thymio)
@@ -218,9 +218,9 @@ To obtain an accurate occupancy grid, a **bird's-eye view** (top-down perpendicu
 The perspective transformation is implemented through two key steps:
 
 1. **Compute the transformation matrix** using `_get_transform_matrix(corners_dict, width_px, height_px)`:
-   - Defines source points from the detected corner marker positions in the camera frame
-   - Defines destination points as a perfect rectangle in the output image
-   - Computes the transformation matrix using [`cv2.getPerspectiveTransform()`](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#ga20f62aa3235d869c9956436c870893ae)
+   - Defines source points from the detected corner marker positions in the camera frame.
+   - Defines destination points as a perfect rectangle in the output image.
+   - Computes the transformation matrix using: [`cv2.getPerspectiveTransform()`](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#ga20f62aa3235d869c9956436c870893ae)
 
 2. **Apply the transformation** using [`cv2.warpPerspective()`](https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html#gaf73673a7e8e18ec6963e3774e6a94b87):
    - Warps the input frame according to the computed matrix
@@ -271,7 +271,11 @@ if is_marker_in_corners:
 
 **Visual Pipeline:**
 
-<img src="img/image.gif" width="453" height="329" />
+<p align="center">
+  <img src="img/image.gif" width="453" height="329" alt="Visual animation of the processing pipeline" />
+  <br>
+  <em>Visual animation of image processing</em>
+</p>
 
 | Grayscale | Gaussian Blur | Adaptive Threshold | Corner Mask | Morphological Operations |
 |:---------:|:-------------:|:------------------:|:-----------:|:------------------------:|
@@ -533,7 +537,7 @@ The navigation system is divided into two complementary modules: **Global Naviga
 
 ### Global Navigation
 
-The global navigation module is responsible for computing the optimal path from the robot's current position to the goal using the cost map provided by the vision system. The implementation is based on the **A* (A-star) algorithm**, enhanced with path smoothing and a pure pursuit controller for path following.
+The global navigation module is responsible for computing the optimal path from the robot's current position to the goal using the cost map provided by the vision system. The implementation is based on the **A-star algorithm**, enhanced with path smoothing and a pure pursuit controller for path following.
 
 The module provides three main functionalities:
 1. **Path planning** using A* with 8-connected grid search
@@ -553,8 +557,7 @@ A* explores the grid by maintaining an **open set** (priority queue) of nodes to
 **Key Implementation Details:**
 
 1. **Heuristic Function** – The octile distance heuristic is used, this is relevant for the 8-connected grids:
-
-The distance is 1 for straight line and $\sqrt{2}$ for diagonal mouvement.
+    - The distance is 1 for straight line and $\sqrt{2}$ for diagonal mouvement.
 
 2. **8-Connected Grid Search** – The algorithm explores 8 neighbors (N, S, E, W, NE, NW, SE, SW) with appropriate movement costs:
 
@@ -601,7 +604,6 @@ We define two vectors:
 
 #### 2. Vector Projection
 To find the closest point, we first calculate the scalar projection of vector $\mathbf{w}$ onto vector $\mathbf{v}$. This tells us "how far along" the segment the robot is located.
-
 We define a scalar parameter $t$, representing the normalized distance along the segment:
 
 $$t = \frac{\mathbf{w} \cdot \mathbf{v}}{\|\mathbf{v}\|^2}$$
@@ -665,6 +667,24 @@ This strategy enable obstacle avoidance but has limitations if the obstacle lead
 </video>
 
 ## Motor Command Generation (Astolfi controller)
+
+
+## State Machine 
+The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
+
+**INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
+
+**LOCALIZE** – Robot localization: continuously scans for the robot's ArUco marker (ID 78) and initializes the EKF state once detected. Transitions to PATH_PLANNING when position is acquired.
+
+**PATH_PLANNING** – Global navigation: detects the goal marker (ID 53), computes the A* optimal path on the cost map, applies path smoothing, and initializes the pure pursuit controller. Moves to FOLLOW_PATH once planning completes.
+
+**FOLLOW_PATH** – Path execution: runs the main control loop combining global navigation (pure pursuit) and local navigation (Braitenberg obstacle avoidance). The EKF continuously fuses odometry and vision measurements. If the robot marker is lost for more than 3 seconds, transitions to KIDNAPPED state.
+
+**KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
+
+This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
+
+![](img/state_diagram_mobile.png)
 
 <img src="img/astolfi.png" width="600" height="450" />
 
