@@ -376,25 +376,20 @@ $$\mathbf{x} = \begin{pmatrix} x \\ y \\ \theta \end{pmatrix}$$
 
 where $(x, y)$ is the position in millimeters and $\theta$ is the orientation in radians.
 
-The EKF maintains two key quantities:
+The EKF internally keeps track of two quantities:
 - **State estimate** $\mathbf{x}_k$: Best estimate of the robot pose at time $k$
 - **Covariance matrix** $\mathbf{P}_k$ (3×3): Uncertainty in the state estimate
 
 **Noise models:**
-- **Process noise covariance** $\mathbf{Q}$ (2×2): Models uncertainty in wheel speeds
+- **Process noise covariance** $\mathbf{Q}$ (3x3): Models uncertainty of the motion model
 - **Measurement noise covariance** $\mathbf{R}$ (3×3): Models camera measurement noise
 
-```python
-# Configuration parameters
-Q = np.eye(2) * 25        # Wheel odometry noise
-R = np.eye(3) * 1         # Camera noise (x, y)
-R[2, 2] = 1.2             # Higher uncertainty for orientation
-WHEEL_BASE = 94           # Distance between wheels (mm)
-```
+
+These matrices were tuned in order to represent the observed noises as well as possible. This approach is detailled in [this notebook](./scripts/filter_tuning.ipynb). As explained in this script we first tested mathematically found covariances which we tuned by hand in a second stage to improve the performance of the filter.
 
 ### Prediction Step
 
-The **prediction step** uses the differential drive motion model to propagate the state forward based on wheel speeds. This step is implemented in the `predict()` method.
+The **prediction step** uses the differential drive motion model to propagate the state forward based on wheel speeds. This step is implemented in the `predict()` method. During the prediction step the wheel speeds are assumed to be constant.
 
 **Motion Model Equations:**
 
@@ -406,7 +401,7 @@ $$v_{\text{lin}} = \frac{v_r + v_l}{2}$$
 
 $$v_{\text{ang}} = \frac{v_r - v_l}{L}$$
 
-where $L = 94$ mm is the wheel base.
+where $L = 94$ mm is the wheel base of the robot.
 
 2. **State propagation (non-linear model):**
 
@@ -418,9 +413,9 @@ $$\theta_{k+1} = \theta_k + v_{\text{ang}} \Delta t$$
 
 3. **Covariance propagation (linearized):**
 
-$$\mathbf{P}_{k+1} = \mathbf{F}_x \mathbf{P}_k \mathbf{F}_x^T + \mathbf{F}_u \mathbf{Q} \mathbf{F}_u^T$$
+$$\mathbf{P}_{k+1} = \mathbf{F}_x \mathbf{P}_k \mathbf{F}_x^T + Q$$
 
-**Jacobian Matrices** (computed by `_linearize_motion()`):
+**Linearized motion model** (computed by `_linearize_motion()` internal method):
 
 $$\mathbf{F}_x = \frac{\partial f}{\partial \mathbf{x}} = \begin{pmatrix} 
 1 & 0 & -v_{\text{lin}} \Delta t \sin(\theta) \\ 
@@ -428,20 +423,15 @@ $$\mathbf{F}_x = \frac{\partial f}{\partial \mathbf{x}} = \begin{pmatrix}
 0 & 0 & 1 
 \end{pmatrix}$$
 
-These Jacobians linearize the non-linear motion model around the current state, enabling the EKF to propagate uncertainty correctly.
+This Jacobian linearizes the non-linear motion model around the current state, enabling the EKF to propagate uncertainty correctly. More information about this choice as well as a seocond option that was considered are explained again in [the kalman tuning notebook](./scripts/filter_tuning.ipynb).
 
-**Key implementation detail:**
+**Implementation detail:**
 
-```python
-# Angle normalization to [-π, π]
-self.x[2] = (self.x[2] + np.pi) % (2 * np.pi) - np.pi
-```
-
-This ensures orientation remains within the canonical range, preventing discontinuities.
+The model crops the heading to the interval between $[-\pi, \pi]$. This ensures orientation remains within the canonical range, preventing discontinuities.
 
 ### Update Step
 
-The **update step** (also called correction step) incorporates camera measurements to correct the predicted state. This step is implemented in the `update()` method and follows the standard Kalman filter equations.
+The **update step** of the filter incorporates absolute pose that we obtain via camera measurements to correct the predicted state. This step is implemented in the `update()` method and follows the standard Kalman filter equations.
 
 **Update Equations:**
 
@@ -487,6 +477,22 @@ while robot_running:
 
 During occlusions, the filter continues predicting using only odometry, with uncertainty ($\mathbf{P}$) gradually increasing until the next camera measurement becomes available.
 
+### The filter in action:
+
+The following image shows the filter working during one run of the robot. There are two periods during which the camera was removed (aruco code of the robot gets covered). During this period the covariance of the motion model increases step by step perpendicular to the motion since the robot is more sure about how far it has driven than about if it deviates from its path to the side. The Covariance gets skewed in the curve. When adding the camera, the covariance becomes tiny as soon as the vision is added again and the update corrects the estimation as expected. While the robot is using its vision, the covariance remains static since the vision data represent absolute measurements and the odometry is far less precise than the vision.
+
+<p align="center">
+  <img src="img/ekf_results.png" height="329" alt="Visual animation of the processing pipeline" />
+  <br>
+  <em>Plot of one run of the EKF</em>
+</p>
+
+Here is a video that also illustrates the above explanations:
+
+<video width="800" controls>
+  <source src="img/todo" type="video/mp4">
+</video>
+
 ### Coordinate Transformations
 
 The system requires transformations between two reference frames:
@@ -503,33 +509,11 @@ The system requires transformations between two reference frames:
 
 **Transformation Classes:**
 
-**1. CoordinateTransform2D** – Handles spatial coordinate conversions:
+**1. CoordinateTransform2D** – Handles spatial coordinate conversions
 
-```python
-# Vision → EKF (implemented in vision_to_ekf())
-x_ekf = x_vision / px_per_mm
-y_ekf = map_height_mm - (y_vision / px_per_mm)
-θ_ekf = -θ_vision
+**2. WheelSpeedTransform** – Converts between Thymio motor units and physical speeds
 
-# EKF → Vision (implemented in ekf_to_vision())
-x_vision = x_ekf * px_per_mm
-y_vision = (map_height_mm - y_ekf) * px_per_mm
-θ_vision = -θ_ekf
-```
-
-**2. WheelSpeedTransform** – Converts between Thymio motor units and physical speeds:
-
-```python
-# Thymio units → mm/s (thymio_to_mmsec())
-left_mm_s = left_thymio / calibration_factor_left
-right_mm_s = right_thymio / calibration_factor_right
-
-# mm/s → Thymio units (mmsec_to_thymio())
-left_thymio = left_mm_s * calibration_factor_left
-right_thymio = right_mm_s * calibration_factor_right
-```
-
-These transformations ensure seamless integration between the vision system (providing measurements in pixels), the EKF (operating in millimeters), and the robot controller (commanding in Thymio units).
+These transformations are added to the [ekf module](./src/filtering.py) and provide integration between the vision system (providing measurements in pixels), the EKF (operating in millimeters), and the robot controller (commanding in Thymio units).
 
 ## Navigation
 
