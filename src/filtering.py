@@ -6,11 +6,13 @@ import time
 STATE_DIM = 3
 
 # Process noise covariance matrix
-Q = np.diag([0.002, 0.001, 0.05]) # TODO: analyze & tune more
+Q = np.diag([0.075, 0.0075, 0.0008])
+# Q = np.array([[ 7.59605780e-02,  7.59605780e-02, -3.96147416e-05], 
+#               [ 7.59605780e-02,  7.59605780e-02, -3.96147416e-05], 
+#               [-3.96147416e-05, -3.96147416e-05,  8.59671549e-06]])
 
 # Measurement noise covariance matrix (camera noise)
-R = np.eye(STATE_DIM) * 0.01 # TODO: analyze & tune more
-# R[2, 2] = 1.2 # TODO: maybe add this
+R = np.diag([2.57, 1.95, 0.01])
 
 WHEEL_BASE = 94 # mm
 
