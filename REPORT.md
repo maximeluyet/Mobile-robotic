@@ -271,7 +271,11 @@ if is_marker_in_corners:
 
 **Visual Pipeline:**
 
-<img src="img/image.gif" width="453" height="329" />
+<p align="center">
+  <img src="img/image.gif" width="453" height="329" alt="Visual animation of the processing pipeline" />
+  <br>
+  <em>Visual animation of image processing</em>
+</p>
 
 | Grayscale | Gaussian Blur | Adaptive Threshold | Corner Mask | Morphological Operations |
 |:---------:|:-------------:|:------------------:|:-----------:|:------------------------:|
@@ -621,7 +625,25 @@ If no obstacle is detected, the robot recomputes the global path. The osbtacle s
 
 This strategy enable obstacle avoidance but has limitations if the ostacle lead the robot closer to the fix obstacles.
 
-# Motor Command Generation (Astolfi controller)
+## Motor Command Generation (Astolfi controller)
+
+## State Machine 
+
+![](img/state_diagram_mobile.png)
+
+The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
+
+**INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
+
+**LOCALIZE** – Robot localization: continuously scans for the robot's ArUco marker (ID 78) and initializes the EKF state once detected. Transitions to PATH_PLANNING when position is acquired.
+
+**PATH_PLANNING** – Global navigation: detects the goal marker (ID 53), computes the A* optimal path on the cost map, applies path smoothing, and initializes the pure pursuit controller. Moves to FOLLOW_PATH once planning completes.
+
+**FOLLOW_PATH** – Path execution: runs the main control loop combining global navigation (pure pursuit) and local navigation (Braitenberg obstacle avoidance). The EKF continuously fuses odometry and vision measurements. If the robot marker is lost for more than 3 seconds, transitions to KIDNAPPED state.
+
+**KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
+
+This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.
 
 # TODO
 
