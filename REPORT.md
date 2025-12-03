@@ -628,9 +628,6 @@ This strategy enable obstacle avoidance but has limitations if the ostacle lead 
 ## Motor Command Generation (Astolfi controller)
 
 ## State Machine 
-
-![](img/state_diagram_mobile.png)
-
 The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
 
 **INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
@@ -643,7 +640,9 @@ The robot's behavior is orchestrated by a **finite state machine** that coordina
 
 **KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
 
-This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.
+This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
+
+![](img/state_diagram_mobile.png)
 
 # TODO
 
