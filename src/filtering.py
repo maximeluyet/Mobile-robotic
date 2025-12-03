@@ -1,57 +1,64 @@
 import numpy as np
 from dataclasses import dataclass
+import time
 
 # Module constants:
 STATE_DIM = 3
-INPUT_DIM = 2
 
-# Initial state covariance matrix
-P_INIT = np.zeros((STATE_DIM, STATE_DIM)) # TODO: analyze & tune more
-
-# Process noise covariance matrix (wheel speed noise)
-Q = np.eye(INPUT_DIM) * 25 # TODO: analyze & tune more
+# Process noise covariance matrix
+Q = np.diag([0.075, 0.0075, 0.0008])
 
 # Measurement noise covariance matrix (camera noise)
-R = np.eye(STATE_DIM) * 1 # TODO: analyze & tune more
-R[2, 2] = 1.2
+R = np.diag([2.57, 1.95, 0.01])
 
 WHEEL_BASE = 94 # mm
-
 
 class ExtendedKalmanFilter:
     ''' Extended Kalman Filter implementation for state estimation. '''
     
-    def __init__(self, keepHist=False):
+    def __init__(self):
         
         self.initialized = False
 
         self.x = np.zeros(STATE_DIM)
         self.P = np.zeros((STATE_DIM, STATE_DIM))
 
+        self.last_prediction_time = 0.0
+
         # Initialize history for plotting
-        self.pred_pos_hist = []
-        self.pred_cov_hist = []
+        self.pose_hist = []
+        self.cov_hist = []
         self.meas_hist = []
-        self.upd_pos_hist = []
-        self.upd_cov_hist = []
     
+
     def init_state(self, camera_pose_m):
+
+        # set time reference
+        self.last_prediction_time = time.time()
 
         # Set state with zero velocity
         self.x = camera_pose_m.copy()
         
         # Initialize covariance
-        self.P = P_INIT
+        self.P = R.copy()
 
         self.initialized = True
     
     
-    def predict(self, right_speed_m, left_speed_m, dt, save_history=False):
+    def predict(self, right_speed_m, left_speed_m):
         ''' Predict current state using motion model with last state and control inputs '''
+
+        # Get time delta
+        current_time = time.time()
+        dt = current_time - self.last_prediction_time
+        self.last_prediction_time = current_time
 
         # Get linear and angular velocities from wheel speeds
         v_lin = (right_speed_m + left_speed_m) / 2.0
         v_ang = (right_speed_m - left_speed_m) / WHEEL_BASE
+
+        # Linearize motion model around previous state
+        F_x = self._linearize_motion(self.x, right_speed_m, left_speed_m, dt)
 
         # Update state based on motion model
         self.x[0] = self.x[0] + v_lin * np.cos(self.x[2]) * dt
@@ -61,16 +68,8 @@ class ExtendedKalmanFilter:
         # Wrap angle to [-pi, pi]
         self.x[2] = (self.x[2] + np.pi) % (2 * np.pi) - np.pi
 
-        # Linearize motion model
-        F_x, F_u = self._linearize_motion(self.x, right_speed_m, left_speed_m, dt)
-
         # Update covariance
-        self.P = F_x @ self.P @ F_x.T + F_u @ Q @ F_u.T
-
-        # Append data to history
-        if save_history:
-            self.pred_pos_hist.append(self.x.copy())
-            self.pred_cov_hist.append(self.P.copy())
+        self.P = F_x @ self.P @ F_x.T + Q
 
         return self.x
         
@@ -88,33 +87,34 @@ class ExtendedKalmanFilter:
         self.x = self.x + K @ y
         self.P = (np.eye(STATE_DIM) - K) @ self.P
 
-        # Append data to history
         if save_history:
-            self.upd_pos_hist.append(self.x.copy())
-            self.upd_cov_hist.append(self.P.copy())
             self.meas_hist.append(camera_pose_m.copy())
 
-        return self.x
     
-    def set_empty_measurement(self):
-        # Append empty measurement to history
-
-        self.meas_hist.append(np.zeros(STATE_DIM))
-
-    
-    def get_state_cov(self):
+    def get_state_cov(self, save_history=False):
         ''' Return current state and covariance '''
+
+        if save_history:
+            self.pose_hist.append(self.x.copy())
+            self.cov_hist.append(self.P.copy())
         
         return self.x, self.P
+
 
     def get_history(self):
         # Return the ekf history
 
-        hist = (self.pred_pos_hist, self.pred_cov_hist, self.upd_pos_hist,
-                self.upd_cov_hist, self.meas_hist)
-
-        return hist
+        return self.pose_hist, self.cov_hist, self.meas_hist
     
+
+    def clear_history(self):
+        # Clear the ekf history
+
+        self.pose_hist = []
+        self.cov_hist = []
+        self.meas_hist = []
+    
+
     @staticmethod
     def _linearize_motion(x, v_r, v_l, dt):
         ''' Linearize the motion model around the state x '''
@@ -125,14 +125,8 @@ class ExtendedKalmanFilter:
         F_x = np.eye(STATE_DIM)
         F_x[0, 2] = - v_lin * dt * np.sin(theta)
         F_x[1, 2] = v_lin * dt * np.cos(theta)
-
-        F_u = np.zeros((STATE_DIM, INPUT_DIM))
-        F_u[0, :] = np.cos(theta) * dt / 2
-        F_u[1, :] = np.sin(theta) * dt / 2
-        F_u[2, 1] = dt / WHEEL_BASE
-        F_u[2, 0] = -dt / WHEEL_BASE
         
-        return F_x, F_u
+        return F_x
     
 
 @dataclass
@@ -157,6 +151,11 @@ class CoordinateTransform2D:
         theta = -theta_e
 
         return np.array([x, y, theta])
+    
+    def cov_ekf_to_vision(self, cov):
+        s = self.px_per_mm
+        J = np.array([[ 0,  s], [ -s, 0]])
+        return J @ cov @ J.T
 
 
 @dataclass
