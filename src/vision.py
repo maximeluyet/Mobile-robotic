@@ -4,7 +4,6 @@ import threading
 
 # Global constants
 
-# TODO: detail: in the end maybe add to vision class since they are only used there...
 ROBOT_WIDTH_CM = 11.0
 MAP_SIZE_CM = (105.0, 70.0)  # Width x Height in cm
 ARUCO_SIZE_CM = 10.0
@@ -47,8 +46,6 @@ class Vision():
         # Function that detects the map, cuts and undistorts image to the map and stores operations
         # returns undistorted frame
         # After the setup the function _cut_frame_to_world can be used to do this operation efficiently
-
-        ## TODO: clean this up
 
         # Get undistortion matrix, undistort and crop
         h, w = frame.shape[:2]
@@ -197,7 +194,6 @@ class Vision():
         return cost_map
 
     def get_goal_position(self, frame, is_world_frame=False):
-        # TODO: clean up
         # Gets the goal position and returns it as tuple (x, y)
         """
         Detect the goal's ArUco marker in the bird's eye view image.
@@ -236,7 +232,6 @@ class Vision():
     
 
     def localize_robot(self, frame, is_world_frame=False):
-        # TODO: clean up
         # Gets the robot pose on the map and returns (x, y, theta)
         # also returns the undistorted frame
         """
@@ -291,11 +286,8 @@ class Vision():
         return robot_detected, robot_pos, frame
 
     
-    # TODO: Detail: think about making this public to explicitly use in robot loop...
     def _cut_frame_to_world(self, frame):
         # Undistorts and cuts frame to the world (map)
-
-        # TODO: check if setup was already done
 
         frame = cv2.undistort(frame, CAMERA_MATRIX, CAMERA_COEFFICIENTS, None, self.distortion)
         frame = frame[self.roi[1] : self.roi[1] + self.roi[3], self.roi[0] : self.roi[0] + self.roi[2]]
@@ -305,7 +297,6 @@ class Vision():
     
     
     def _detect_map_markers(self, frame):
-        # TODO: clean up and put less comments
         """
         Detect map ArUco markers in the frame and return dictionary of marker positions.
         
@@ -354,7 +345,6 @@ class Vision():
     
     
     def _get_transform_matrix(self, corners_dict, width_px, height_px):
-        # TODO: clean up and put less comments
         """
         Compute perspective transform matrix from detected ArUco corners.
         

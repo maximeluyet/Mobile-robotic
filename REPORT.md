@@ -49,7 +49,7 @@ The main objectives of this project are the following:
 
 
 ### Group
-Our team consists of three first-year Master's students in Robotics at EPFL. The workload has been equally separated between members. The final assembly of the code has been done by everyone. 
+Our team consists of three Master's students in Robotics and Electrical Engineering at EPFL. The workload has been equally separated between members. The final assembly of the code has been done by everyone.
 | Name            | SCIPER | Role                       |
 |-----------------|--------|----------------------------|
 | Linus  Crugnola | 340864 | Filtering                  |
@@ -490,7 +490,7 @@ The following image shows the filter working during one run of the robot. There 
 Here is a video that also illustrates the above explanations:
 
 <video width="800" controls>
-  <source src="img/todo" type="video/mp4">
+  <source src="img/elipse_ekf.mp4" type="video/mp4">
 </video>
 
 ### Coordinate Transformations
