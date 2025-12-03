@@ -576,11 +576,17 @@ We chose this approach have a cautious "optimal" path.
 
 The raw A* path countains only straigh or diagonal mouvement. The `grid_path_smoothing()` method applies a **greedy line-of-sight algorithm** to remove intermediate points while maintaining collision-free paths and giving path with every angle not restraint to 45° mouvement.
 
+#### greedy line-of-sight algorithm
+1. Start with the first point in the A* path as the current point.
+2. Iterate through the path points to find the farthest point that can be reached in a straight line from the current point without intersecting any obstacles in the cost map.
+3. Add this farthest reachable point to the smoothed path.
+4. Update the current point to this farthest reachable point and repeat until the end of the path is reached.
+
 <img src="img/map_display.png" width="960" height="736" />
 
 #### Path Following
 
-The path following system uses a **pure pursuit approach** with dynamic lookahead distance, implemented across three key methods: `find_closest_point_smoothed_path()`, `target_point()`, and `direction_attraction()`.
+The path following system uses a **pure pursuit approach** with dynamic lookahead distance, implemented across two key methods: `find_closest_point_smoothed_path()` and `target_point()`.
 
 **1. Closest Point Projection:**
 
