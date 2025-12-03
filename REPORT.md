@@ -515,6 +515,9 @@ The system requires transformations between two reference frames:
 
 These transformations are added to the [ekf module](./src/filtering.py) and provide integration between the vision system (providing measurements in pixels), the EKF (operating in millimeters), and the robot controller (commanding in Thymio units).
 
+### References:
+The Kalman filter implementation was inspired by the [ROS ekf implementation](https://docs.ros.org/en/lunar/api/robot_localization/html/_downloads/robot_localization_ias13_revised.pdf) as well as the [Kalman filter wikipedia article](https://en.wikipedia.org/wiki/Kalman_filter) for the formulae. The [following article](https://www.alanzucconi.com/2022/07/24/extended-kalman-filter/) has also been helpful. The motion model follows lecture 4 of the Distributed intelligent systems course (ENG-466) taught by A. Martinoli. The slides can be found [here](https://disalw3.epfl.ch/teaching/distributed_intelligent_systems/ay2025-26/lecture/DIS_25-26_W04_lecture.pdf).
+
 ## Navigation
 
 The navigation system is divided into two complementary modules: **Global Navigation** for strategic path planning and **Local Navigation** for reactive obstacle avoidance. This architecture follows the hybrid deliberative-reactive paradigm commonly used in mobile robotics.
