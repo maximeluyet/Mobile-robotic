@@ -537,7 +537,7 @@ The navigation system is divided into two complementary modules: **Global Naviga
 
 ### Global Navigation
 
-The global navigation module is responsible for computing the optimal path from the robot's current position to the goal using the cost map provided by the vision system. The implementation is based on the **A-star (A*) algorithm**, enhanced with path smoothing and a pure pursuit controller for path following.
+The global navigation module is responsible for computing the optimal path from the robot's current position to the goal using the cost map provided by the vision system. The implementation is based on the **A-star algorithm**, enhanced with path smoothing and a pure pursuit controller for path following.
 
 The module provides three main functionalities:
 1. **Path planning** using A* with 8-connected grid search
@@ -557,8 +557,7 @@ A* explores the grid by maintaining an **open set** (priority queue) of nodes to
 **Key Implementation Details:**
 
 1. **Heuristic Function** – The octile distance heuristic is used, this is relevant for the 8-connected grids:
-
-The distance is 1 for straight line and $\sqrt{2}$ for diagonal mouvement.
+    - The distance is 1 for straight line and $\sqrt{2}$ for diagonal mouvement.
 
 2. **8-Connected Grid Search** – The algorithm explores 8 neighbors (N, S, E, W, NE, NW, SE, SW) with appropriate movement costs:
 
@@ -580,17 +579,11 @@ We chose this approach have a cautious "optimal" path.
 
 The raw A* path countains only straigh or diagonal mouvement. The `grid_path_smoothing()` method applies a **greedy line-of-sight algorithm** to remove intermediate points while maintaining collision-free paths and giving path with every angle not restraint to 45° mouvement.
 
-#### greedy line-of-sight algorithm
-1. Start with the first point in the A* path as the current point.
-2. Iterate through the path points to find the farthest point that can be reached in a straight line from the current point without intersecting any obstacles in the cost map.
-3. Add this farthest reachable point to the smoothed path.
-4. Update the current point to this farthest reachable point and repeat until the end of the path is reached.
-
 <img src="img/map_display.png" width="960" height="736" />
 
 #### Path Following
 
-The path following system uses a **pure pursuit approach** with dynamic lookahead distance, implemented across two key methods: `find_closest_point_smoothed_path()` and `target_point()`.
+The path following system uses a **pure pursuit approach** with dynamic lookahead distance, implemented across three key methods: `find_closest_point_smoothed_path()`, `target_point()`, and `direction_attraction()`.
 
 **1. Closest Point Projection:**
 
@@ -605,7 +598,6 @@ We define two vectors:
 
 #### 2. Vector Projection
 To find the closest point, we first calculate the scalar projection of vector $\mathbf{w}$ onto vector $\mathbf{v}$. This tells us "how far along" the segment the robot is located.
-
 We define a scalar parameter $t$, representing the normalized distance along the segment:
 
 $$t = \frac{\mathbf{w} \cdot \mathbf{v}}{\|\mathbf{v}\|^2}$$
@@ -687,41 +679,6 @@ The robot's behavior is orchestrated by a **finite state machine** that coordina
 This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
 
 ![](img/state_diagram_mobile.png)
-<img src="img/astolfi.png" width="600" height="450" />
 
-Compute the relevant angles and distances:
-
-$$
-\begin{aligned}
-\rho &= \sqrt{\Delta x^2 + \Delta y^2} \\
-\alpha &= -\theta + \operatorname{atan2}(\Delta y, \Delta x) \\
-\beta &= \beta_{desired} -\theta - \alpha
-\end{aligned}
-$$
-We can compute the control law as:
-$$
-v = k_{\rho} \rho
-$$
-$$
-\omega = k_{\alpha} \alpha + k_{\beta} \beta
-$$
-And the wheel speeds are given by:
-$$
-\omega_R = \frac{v}{R} + \frac{L \omega}{R}
-$$
-$$
-\omega_L = \frac{v}{R} - \frac{L \omega}{R}
-$$
-with $R$ the wheel radius and $L$ half the distance between wheels.
-
-This control law ensures that ($\rho$, $\alpha$, $\beta$) converge to ($0, 0, \beta_{desired}$), meaning the robot reaches the target point with the desired orientation.
-
-### Tuning the gains
-We augmented $k_{\rho}$ to have a faster robot speed, before the robot stability decreases.
-Same empirical approach was used to tune $k_{\alpha}$ and $k_{\beta}$.
-We obtained the following values: 
-$k_{\rho} = 1.5$, $k_{\alpha} = 2.2$, $k_{\beta} = -1.0$
-
-
-
+# TODO
 
