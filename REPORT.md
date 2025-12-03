@@ -576,7 +576,7 @@ We chose this approach have a cautious "optimal" path.
 
 The raw A* path countains only straigh or diagonal mouvement. The `grid_path_smoothing()` method applies a **greedy line-of-sight algorithm** to remove intermediate points while maintaining collision-free paths and giving path with every angle not restraint to 45° mouvement.
 
-# TODO ADD PICTURE TO EXPLAIN 
+<img src="img/map_display.png" width="960" height="736" />
 
 #### Path Following
 
@@ -585,15 +585,50 @@ The path following system uses a **pure pursuit approach** with dynamic lookahea
 **1. Closest Point Projection:**
 
 The `find_closest_point_smoothed_path()` method projects the robot's position onto the path by finding the perpendicular projection on each path segment.
-If the projected point is outside the segment, we should the closest extremity.
+If the projected point is outside the segment, we chose the closest extremity.
 
-# TODO ADD MATH FORMULA
+We define two vectors:
+1.  **The Segment Vector ($\mathbf{v}$)**: Representing the direction and magnitude of the path segment.
+    $$\mathbf{v} = E - S$$
+2.  **The Point Vector ($\mathbf{w}$)**: Representing the vector from the segment start to the robot.
+    $$\mathbf{w} = P - S$$
+
+#### 2. Vector Projection
+To find the closest point, we first calculate the scalar projection of vector $\mathbf{w}$ onto vector $\mathbf{v}$. This tells us "how far along" the segment the robot is located.
+
+We define a scalar parameter $t$, representing the normalized distance along the segment:
+
+$$t = \frac{\mathbf{w} \cdot \mathbf{v}}{\|\mathbf{v}\|^2}$$
+
+#### 3. Clamping (Handling Finite Segments)
+Mathematically, the projection $t$ assumes an infinite line passing through $S$ and $E$. However, our path is composed of finite segments. To constrain the result to the physical segment, we must clamp $t$ to the range $[0, 1]$:
+
+$$t_{clamped} = \max(0, \min(1, t))$$
+
+This logic handles three distinct cases:
+* **Case A ($t \leq 0$):** The projection falls "behind" the start point. The closest point is the vertex $S$.
+* **Case B ($t \geq 1$):** The projection falls "beyond" the end point. The closest point is the vertex $E$.
+* **Case C ($0 < t < 1$):** The projection falls strictly between $S$ and $E$. The closest point is the orthogonal projection on the line.
+
+#### 4. Calculating the Candidate Point
+Using the clamped parameter $t_{clamped}$, the coordinates of the closest candidate point $C$ on this specific segment are calculated using linear interpolation:
+
+$$C = S + t_{clamped} \cdot \mathbf{v}$$
+
+#### 5. Minimization
+The function iterates through all segments $i$ in the path. For each segment, it calculates the squared Euclidean distance ($d^2$) between the candidate point $C_i$ and the robot $P$:
+
+$$d^2 = \| C_i - P \|^2$$
+
+The function returns the candidate $C_i$ corresponding to the minimum $d^2$.
 
 **2. Target Point Calculation:**
 
 The `target_point()` method advances a specified lookahead distance along the path from the closest point.
 
-# TODO ADD PICTURE TO EXPLAIN EVERYTHING
+It start in the closest point and move along this segment of the path. If the segment length is less than the lookahead distance, it move to the next segment and continue until the lookahead distance is reached.
+
+<img src="img/explain_nav.png" width="850" height="508" />
 
 ### Local Navigation
 
