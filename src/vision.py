@@ -15,10 +15,10 @@ MARKER_ROBOT = 78               # ID for the robot marker
 MARKER_GOAL = 53                # ID for the goal marker
 
 #Camera calibration parameters
-CAMERA_MATRIX = np.array([[1484.14935, 0, 964.220337],
-                          [0, 1490.50225, 539.531044],
+CAMERA_MATRIX = np.array([[1485.302933, 0, 988.156651],
+                          [0, 1502.021201, 507.050374],
                           [0, 0, 1]])
-CAMERA_COEFFICIENTS = np.array([0.154056967, -1.04865202, -0.000689137957, -0.00132248869, 1.48905183])
+CAMERA_COEFFICIENTS = np.array([0.148278, -0.767285, -0.010129, -0.007089, 1.008489])
 CAMERA_RESOLUTION = (1920, 1080)
 
 class Vision():
@@ -394,7 +394,7 @@ class Camera:
 
     def __init__(self, cam_id=0):
         self.cam_id = cam_id
-        self.cap = cv2.VideoCapture(self.cam_id)
+        self.cap = cv2.VideoCapture(self.cam_id, cv2.CAP_DSHOW)
 
         if not self.cap.isOpened():
             print(f"Error: Unable to open camera with ID {self.cam_id}")
