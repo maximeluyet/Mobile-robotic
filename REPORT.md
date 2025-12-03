@@ -627,6 +627,7 @@ This strategy enable obstacle avoidance but has limitations if the ostacle lead 
 
 ## Motor Command Generation (Astolfi controller)
 
+
 ## State Machine 
 The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
 
