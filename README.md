@@ -7,7 +7,7 @@ This project was developed as part of the **Basics of Mobile Robotics (MICRO-452
 This project aims to develop an autonomous navigation system for the Thymio robot that can:
 
 - Navigate through a predefined environment with static obstacles using **global navigation** (A* path planning)
-- Dynamically avoid unexpected obstacles using **local navigation** (Braitenberg-inspired controller)
+- Dynamically avoid unexpected obstacles using **local navigation** (obstacle avoidance)
 - Maintain accurate position estimation through **Extended Kalman Filtering**
 - Reliably reach arbitrary target positions while handling **kidnapping scenarios**
 - Perform real-time **visual localization** using ArUco markers
@@ -48,7 +48,7 @@ Mobile-robotic/
 ├── code/                      # Source code modules
 │   ├── filtering.py           # Extended Kalman Filter implementation
 │   ├── global_navigation.py   # A* path planning and smoothing
-│   ├── local_navigation.py    # Braitenberg obstacle avoidance
+│   ├── local_navigation.py    # Obstacle avoidance
 │   └── vision.py              # ArUco detection and occupancy grid
 ├── scripts/                   # Utility scripts
 │   ├── aruco_markers/         # ArUco marker generation
@@ -132,4 +132,4 @@ Special thanks to:
 
 **Course**: MICRO-452 - Basics of Mobile Robotics  
 **Institution**: École Polytechnique Fédérale de Lausanne (EPFL)  
-**Academic Year**: 2024-2025
+**Academic Year**: 2025-2026
