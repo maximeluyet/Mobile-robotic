@@ -773,3 +773,13 @@ This architecture ensures robust operation with automatic recovery from localiza
   <br>
   <em>Illustration of the global state machine </em>
 </p>
+
+## Conclusion
+
+This project successfully demonstrates autonomous navigation on the Thymio robot by integrating computer vision, state estimation, and path planning algorithms. The system combines deliberative global planning (A* with path smoothing) with reactive local obstacle avoidance (Braitenberg controller), coordinated through a finite state machine.
+
+The vision module provides reliable localization using ArUco markers, while the Extended Kalman Filter ensures continuous pose tracking during marker occlusions. The Astolfi controller delivers stable trajectory following, enabling the robot to reach goals while avoiding both static and dynamic obstacles.
+
+**Limitations:** The overhead camera setup limits scalability, and reactive navigation can occasionally guide the robot toward mapped obstacles. Future work could integrate SLAM techniques for map-free navigation and improve multi-obstacle handling.
+
+This project demonstrates the practical integration of perception, estimation, planning, and control in autonomous mobile robotics. 
