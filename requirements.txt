@@ -1,8 +1,8 @@
-numpy>=1.24.0
-opencv-python>=4.8.0
-matplotlib>=3.4.3
-pyvisgraph>=0.2.1
-tqdm>=4.65.0
-docutils>=0.20.1
-tdmclient>=0.1.21
-ipywidgets>=8.0.0
+numpy>=2.3.3
+opencv-python>=4.12.0
+matplotlib>=3.10.0
+tqdm>=4.67.0
+ipywidgets>=8.1.0
+pandas>=2.3.0
+scipy>=1.15.0
+seaborn>=0.13.0

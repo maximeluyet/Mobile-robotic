@@ -1,6 +1,0 @@
-# Distortion Coefficients [k1, k2, p1, p2, k3]
-<<<<<<< HEAD:cam_calibration/calibration_output/distortion_coefficients.txt
-0.145125 -0.876420 -0.007068 0.002976 1.228420
-=======
-0.148278 -0.767285 -0.010129 0.007089 1.008489
->>>>>>> future_main:scripts/cam_calibration/calibration_output/distortion_coefficients.txt

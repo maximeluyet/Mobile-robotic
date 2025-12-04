@@ -1,9 +1,0 @@
-# Camera Matrix (Intrinsic Parameters)
-<<<<<<< HEAD:cam_calibration/calibration_output/camera_matrix.txt
-1486.772901 0.000000 981.919265
-0.000000 1501.206329 510.286078
-=======
-1485.302933 0.000000 988.156651
-0.000000 1502.021201 507.050374
->>>>>>> future_main:scripts/cam_calibration/calibration_output/camera_matrix.txt
-0.000000 0.000000 1.000000
