@@ -87,10 +87,15 @@ Concerning each part of the project, specific choices were made to reach the fix
     - Weighted direction vectors oppose detected obstacles
     - Turn to avoid the obstacle then move forward.
     - Replan the path when the obstacle is on the side of the robot.
-- **State estimation**: Extended Kalman Filter (EKF) for robot pose tracking
-    - Prediction step using differential drive motion model (wheel speeds)
-    - Update step using camera measurements (ArUco marker detection)
-    - 3-state vector: (x, y, θ) with covariance matrices for process and measurement noise
+
+
+**State estimation**
+- Extended Kalman Filter (EKF) for robot pose estimation
+- Faster than Particle filter, widely used in small differential drive robots
+- Prediction step using differential drive motion model (wheel speeds)
+- Update step using camera measurements (ArUco marker detection)
+- 3-state vector: (x, y, θ) with covariance matrices for process and measurement noise
+- Shall be able to reliably track the robot pose without camera inputs during short timespans
 
 ### Demo 
 Here you can see a video of the final result. The Thymio successfully reaches the goal while navigating through obstacles. He also keed track of the path even when blinded due to Kalman filtering. The Thymio is also able to reconise when he is kidnapped and recompute the optimal path. 
