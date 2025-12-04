@@ -1,12 +1,13 @@
 # Basics of Mobile Robotics - Project
 
-## TODO UPDATE: Table of Contents
+## Table of Contents
 
 - [Introduction](#introduction)
-    - [Goal of the project](#goal-of-the-goal-of-the-project)
+    - [Goal of the project](#goal-of-the-project)
     - [Group](#group) 
+    - [Design choices](#design-choices)
     - [Demo](#demo)
-- [Vision Processing](#vision-processing)
+- [Vision processing](#vision-processing)
     - [Calibration](#calibration)
         - [Calibration parameters](#calibration-parameters)
         - [Process](#process)
@@ -23,17 +24,20 @@
     - [Extended Kalman Filter Overview](#extended-kalman-filter-overview)
     - [Prediction Step](#prediction-step)
     - [Update Step](#update-step)
+    - [The filter in action](#the-filter-in-action)
     - [Coordinate Transformations](#coordinate-transformations)
+    - [References](#references)
 - [Navigation](#navigation)
     - [Global Navigation](#global-navigation)
         - [A* Path Planning](#a-path-planning)
         - [Path Smoothing](#path-smoothing)
+        - [Greedy line-of-sight algorithm](#greedy-line-of-sight-algorithm)
         - [Path Following](#path-following)
-        - [Implementation](#implementation-4)
     - [Local Navigation](#local-navigation)
-        - [Braitenberg-Inspired Controller](#braitenberg-inspired-controller)
-        - [Sensor Fusion](#sensor-fusion)
-        - [Motor Command Generation](#motor-command-generation)
+        - [Map sensor inputs into 2D space](#map-sensor-inputs-into-2d-space)
+- [Motor Command Generation (Astolfi controller)](#motor-command-generation-astolfi-controller)
+    - [Tuning the gains](#tuning-the-gains)
+- [State Machine](#state-machine)
 - [Results](#results)
 - [Conclusion](#conclusion)
 
@@ -49,7 +53,7 @@ The main objectives of this project are the following:
 
 
 ### Group
-Our team consists of three first-year Master's students in Robotics at EPFL. The workload has been equally separated between members. The final assembly of the code has been done by everyone. 
+Our team consists of three Master's students in Robotics and Electrical Engineering at EPFL. The workload has been equally separated between members. The final assembly of the code has been done by everyone.
 | Name            | SCIPER | Role                       |
 |-----------------|--------|----------------------------|
 | Linus  Crugnola | 340864 | Filtering                  |
@@ -72,29 +76,40 @@ Concerning each part of the project, specific choices were made to reach the fix
 - Obstacles are modular, not fixed on the paper
 
 **Path planning methods** 
-- Use of cost grid defined by the camera resolution
-- Collision avoidance is guaranteed by extension of obstacles in the occupancy grid
-- The optimal path is computed following the A* algorithm with 8-connected neighbors and diagonal movement costs
-- Path smoothing is applied to remove unnecessary waypoints using line-of-sight checks
+- Use of cost grid defined by the camera resolution.
+- Collision avoidance is guaranteed by extension of obstacles in the occupancy grid.
+- The optimal path is computed following the A* algorithm with 8-connected neighbors and diagonal movement costs.
+- Path smoothing is applied to remove unnecessary waypoints using line-of-sight checks.
 
 **Navigation** 
-- **Global navigation**: A* path planning on the occupancy grid from start to goal
-- **Local navigation**: Braitenberg-inspired controller using 7 proximity sensors
-    - Weighted direction vectors oppose detected obstacles
+- **Global navigation**: A* path planning on the occupancy grid from start to goal.
+- **Local navigation**: Braitenberg-inspired controller using 7 proximity sensors.
+    - Weighted direction vectors oppose detected obstacles.
     - Turn to avoid the obstacle then move forward.
     - Replan the path when the obstacle is on the side of the robot.
-- **State estimation**: Extended Kalman Filter (EKF) for robot pose tracking
-    - Prediction step using differential drive motion model (wheel speeds)
-    - Update step using camera measurements (ArUco marker detection)
-    - 3-state vector: (x, y, θ) with covariance matrices for process and measurement noise
+
+**Astolfi controler**
+- Create smooth and natural mouvement.
+- Exponentially stable with right coefficient choices.
+
+**State estimation**
+- Extended Kalman Filter (EKF) for robot pose estimation.
+- Faster than Particle filter, widely used in small differential drive robots.
+- Prediction step using differential drive motion model (wheel speeds).
+- Update step using camera measurements (ArUco marker detection).
+- 3-state vector: (x, y, θ) with covariance matrices for process and measurement noise.
+- Shall be able to reliably track the robot pose without camera inputs during short timespans.
 
 ### Demo 
 Here you can see a video of the final result. The Thymio successfully reaches the goal while navigating through obstacles. He also keed track of the path even when blinded due to Kalman filtering. The Thymio is also able to reconise when he is kidnapped and recompute the optimal path. 
 
-<video width="800" controls>
-  <source src="img/Mobile_robotic_project_T41_demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+<p align="center">
+    <video width="800" controls>
+    <source src="img/Mobile_robotic_project_T41_demo.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+    <em> Global demostration of the project</em>
+    </video>
+</p>
 
 **Video Elements Explanation:**
 
@@ -193,7 +208,12 @@ These markers enable the vision system to:
 3. Track the robot's position and orientation in real-time.
 4. Identify the goal location for path planning.
 
-![Map with ArUco markers](scripts/aruco_markers/img/map_img.png)
+<br>
+<p align="center">
+  <img src="scripts/aruco_markers/img/map_img.png" width="600" height="auto" alt="Map with ArUco markers" />
+  <br>
+  <em>Visual animation of image processing</em>
+</p>
 
 #### Implementation 
 
@@ -269,13 +289,9 @@ if is_marker_in_corners:
 
 10. **Border safety** – [`cv2.rectangle(cost_map, (0, 0), (w-1, h-1), 255, border_thickness)`](https://docs.opencv.org/4.x/d6/d6e/group__imgproc__draw.html#ga07d2f74cadcf8e305e810ce8eed13bc9) – Adds a border around the entire map with thickness equal to the robot's width (13 cm) to prevent edge collisions.
 
-**Visual Pipeline:**
+**Visual Pipeline**
 
-<p align="center">
-  <img src="img/image.gif" width="453" height="329" alt="Visual animation of the processing pipeline" />
-  <br>
-  <em>Visual animation of image processing</em>
-</p>
+All the steps presented above are illustrated in the following table. A short video also presents the evolution of these steps.
 
 | Grayscale | Gaussian Blur | Adaptive Threshold | Corner Mask | Morphological Operations |
 |:---------:|:-------------:|:------------------:|:-----------:|:------------------------:|
@@ -284,6 +300,12 @@ if is_marker_in_corners:
 | Obstacle Filling | Dilation | Fading Gradient | Cost Map | Final Cost Map + Border |
 |:----------------:|:--------:|:---------------:|:--------:|:-----------------------:|
 | ![](img/Occupancy_Grid_6_Holes_Filled.png) | ![](img/Occupancy_Grid_7_Dilated.png) | ![](img/Occupancy_Grid_8_Fading_Border.png) | ![](img/Occupancy_Grid_9_Cost_Map.png) | ![](img/Occupancy_Grid_10_Cost_Map_with_Border.png) |
+
+<p align="center">
+  <img src="img/image.gif" width="453" height="329" alt="Visual animation of the processing pipeline" />
+  <br>
+  <em>Visual animation of image processing</em>
+</p>
 
 #### Implementation
 
@@ -376,25 +398,20 @@ $$\mathbf{x} = \begin{pmatrix} x \\ y \\ \theta \end{pmatrix}$$
 
 where $(x, y)$ is the position in millimeters and $\theta$ is the orientation in radians.
 
-The EKF maintains two key quantities:
+The EKF internally keeps track of two quantities:
 - **State estimate** $\mathbf{x}_k$: Best estimate of the robot pose at time $k$
 - **Covariance matrix** $\mathbf{P}_k$ (3×3): Uncertainty in the state estimate
 
 **Noise models:**
-- **Process noise covariance** $\mathbf{Q}$ (2×2): Models uncertainty in wheel speeds
+- **Process noise covariance** $\mathbf{Q}$ (3x3): Models uncertainty of the motion model
 - **Measurement noise covariance** $\mathbf{R}$ (3×3): Models camera measurement noise
 
-```python
-# Configuration parameters
-Q = np.eye(2) * 25        # Wheel odometry noise
-R = np.eye(3) * 1         # Camera noise (x, y)
-R[2, 2] = 1.2             # Higher uncertainty for orientation
-WHEEL_BASE = 94           # Distance between wheels (mm)
-```
+
+These matrices were tuned in order to represent the observed noises as well as possible. This approach is detailled in [this notebook](./scripts/filter_tuning.ipynb). As explained in this script we first tested mathematically found covariances which we tuned by hand in a second stage to improve the performance of the filter.
 
 ### Prediction Step
 
-The **prediction step** uses the differential drive motion model to propagate the state forward based on wheel speeds. This step is implemented in the `predict()` method.
+The **prediction step** uses the differential drive motion model to propagate the state forward based on wheel speeds. This step is implemented in the `predict()` method. During the prediction step the wheel speeds are assumed to be constant.
 
 **Motion Model Equations:**
 
@@ -406,7 +423,7 @@ $$v_{\text{lin}} = \frac{v_r + v_l}{2}$$
 
 $$v_{\text{ang}} = \frac{v_r - v_l}{L}$$
 
-where $L = 94$ mm is the wheel base.
+where $L = 94$ mm is the wheel base of the robot.
 
 2. **State propagation (non-linear model):**
 
@@ -418,9 +435,9 @@ $$\theta_{k+1} = \theta_k + v_{\text{ang}} \Delta t$$
 
 3. **Covariance propagation (linearized):**
 
-$$\mathbf{P}_{k+1} = \mathbf{F}_x \mathbf{P}_k \mathbf{F}_x^T + \mathbf{F}_u \mathbf{Q} \mathbf{F}_u^T$$
+$$\mathbf{P}_{k+1} = \mathbf{F}_x \mathbf{P}_k \mathbf{F}_x^T + Q$$
 
-**Jacobian Matrices** (computed by `_linearize_motion()`):
+**Linearized motion model** (computed by `_linearize_motion()` internal method):
 
 $$\mathbf{F}_x = \frac{\partial f}{\partial \mathbf{x}} = \begin{pmatrix} 
 1 & 0 & -v_{\text{lin}} \Delta t \sin(\theta) \\ 
@@ -428,20 +445,15 @@ $$\mathbf{F}_x = \frac{\partial f}{\partial \mathbf{x}} = \begin{pmatrix}
 0 & 0 & 1 
 \end{pmatrix}$$
 
-These Jacobians linearize the non-linear motion model around the current state, enabling the EKF to propagate uncertainty correctly.
+This Jacobian linearizes the non-linear motion model around the current state, enabling the EKF to propagate uncertainty correctly. More information about this choice as well as a seocond option that was considered are explained again in [the kalman tuning notebook](./scripts/filter_tuning.ipynb).
 
-**Key implementation detail:**
+**Implementation detail:**
 
-```python
-# Angle normalization to [-π, π]
-self.x[2] = (self.x[2] + np.pi) % (2 * np.pi) - np.pi
-```
-
-This ensures orientation remains within the canonical range, preventing discontinuities.
+The model crops the heading to the interval between $[-\pi, \pi]$. This ensures orientation remains within the canonical range, preventing discontinuities.
 
 ### Update Step
 
-The **update step** (also called correction step) incorporates camera measurements to correct the predicted state. This step is implemented in the `update()` method and follows the standard Kalman filter equations.
+The **update step** of the filter incorporates absolute pose that we obtain via camera measurements to correct the predicted state. This step is implemented in the `update()` method and follows the standard Kalman filter equations.
 
 **Update Equations:**
 
@@ -487,6 +499,26 @@ while robot_running:
 
 During occlusions, the filter continues predicting using only odometry, with uncertainty ($\mathbf{P}$) gradually increasing until the next camera measurement becomes available.
 
+### The filter in action:
+
+The following image shows the filter working during one run of the robot. There are two periods during which the camera was removed (aruco code of the robot gets covered). During this period the covariance of the motion model increases step by step perpendicular to the motion since the robot is more sure about how far it has driven than about if it deviates from its path to the side. The Covariance gets skewed in the curve. When adding the camera, the covariance becomes tiny as soon as the vision is added again and the update corrects the estimation as expected. While the robot is using its vision, the covariance remains static since the vision data represent absolute measurements and the odometry is far less precise than the vision.
+
+<p align="center">
+  <img src="img/ekf_results.png" height="329" alt="Visual animation of the processing pipeline" />
+  <br>
+  <em>Plot of one run of the EKF</em>
+</p>
+
+Here is a video that also illustrates the above explanations:
+
+<p align="center">
+    <video width="800" controls>
+    <source src="img/elipse_ekf.mp4" type="video/mp4">
+    </video>
+    <br>
+    <em>Demostration of the EFF in action</em>
+</p>
+
 ### Coordinate Transformations
 
 The system requires transformations between two reference frames:
@@ -503,37 +535,18 @@ The system requires transformations between two reference frames:
 
 **Transformation Classes:**
 
-**1. CoordinateTransform2D** – Handles spatial coordinate conversions:
+**1. CoordinateTransform2D** – Handles spatial coordinate conversions
 
-```python
-# Vision → EKF (implemented in vision_to_ekf())
-x_ekf = x_vision / px_per_mm
-y_ekf = map_height_mm - (y_vision / px_per_mm)
-θ_ekf = -θ_vision
+**2. WheelSpeedTransform** – Converts between Thymio motor units and physical speeds
 
-# EKF → Vision (implemented in ekf_to_vision())
-x_vision = x_ekf * px_per_mm
-y_vision = (map_height_mm - y_ekf) * px_per_mm
-θ_vision = -θ_ekf
-```
+These transformations are added to the [ekf module](./src/filtering.py) and provide integration between the vision system (providing measurements in pixels), the EKF (operating in millimeters), and the robot controller (commanding in Thymio units).
 
-**2. WheelSpeedTransform** – Converts between Thymio motor units and physical speeds:
-
-```python
-# Thymio units → mm/s (thymio_to_mmsec())
-left_mm_s = left_thymio / calibration_factor_left
-right_mm_s = right_thymio / calibration_factor_right
-
-# mm/s → Thymio units (mmsec_to_thymio())
-left_thymio = left_mm_s * calibration_factor_left
-right_thymio = right_mm_s * calibration_factor_right
-```
-
-These transformations ensure seamless integration between the vision system (providing measurements in pixels), the EKF (operating in millimeters), and the robot controller (commanding in Thymio units).
+### References:
+Apart from the content of the BOMR course, the Kalman filter implementation was inspired by the [ROS ekf implementation](https://docs.ros.org/en/lunar/api/robot_localization/html/_downloads/robot_localization_ias13_revised.pdf) as well as the [Kalman filter wikipedia article](https://en.wikipedia.org/wiki/Kalman_filter) for the formulae. The [following article](https://www.alanzucconi.com/2022/07/24/extended-kalman-filter/) has also been helpful. The motion model follows lecture 4 of the Distributed intelligent systems course (ENG-466) taught by A. Martinoli. The slides can be found [here](https://disalw3.epfl.ch/teaching/distributed_intelligent_systems/ay2025-26/lecture/DIS_25-26_W04_lecture.pdf).
 
 ## Navigation
 
-The navigation system is divided into two complementary modules: **Global Navigation** for strategic path planning and **Local Navigation** for reactive obstacle avoidance. This architecture follows the hybrid deliberative-reactive paradigm commonly used in mobile robotics.
+The navigation system is divided into two complementary modules: **Global Navigation** for strategic path planning and **Local Navigation** for reactive obstacle avoidance. This architecture follows the hybrid [deliberative-reactive paradigm](https://en.wikipedia.org/wiki/Robotic_paradigm) commonly used in mobile robotics.
 
 ### Global Navigation
 
@@ -579,13 +592,19 @@ We chose this approach have a cautious "optimal" path.
 
 The raw A* path countains only straigh or diagonal mouvement. The `grid_path_smoothing()` method applies a **greedy line-of-sight algorithm** to remove intermediate points while maintaining collision-free paths and giving path with every angle not restraint to 45° mouvement.
 
-#### greedy line-of-sight algorithm
+#### Greedy line-of-sight algorithm
 1. Start with the first point in the A* path as the current point.
 2. Iterate through the path points to find the farthest point that can be reached in a straight line from the current point without intersecting any obstacles in the cost map.
 3. Add this farthest reachable point to the smoothed path.
 4. Update the current point to this farthest reachable point and repeat until the end of the path is reached.
 
-<img src="img/map_display.png" width="960" height="736" />
+<p align="center">
+  <img src="img/map_display.png" width="960" height="736" />
+  <br>
+  <em>Illustration of occupancy grid with legend</em>
+</p>
+
+
 
 #### Path Following
 
@@ -636,7 +655,11 @@ The `target_point()` method advances a specified lookahead distance along the pa
 
 It start with the closest point and move along this segment of the path. If the segment length is less than the lookahead distance, it move to the next segment and continue until the lookahead distance is reached.
 
-<img src="img/explain_nav.png" width="850" height="508" />
+<p align="center">
+  <img src="img/explain_nav.png" width="850" height="508" />
+  <br>
+  <em>Illustration of generated path with segments </em>
+</p>
 
 ### Local Navigation
 
@@ -644,49 +667,69 @@ It start with the closest point and move along this segment of the path. If the 
 
 The sensor readings pass through weighted connections to output a 2D repulsion direction.
 
-<img src="img/sensor_weights.png" width="715" height="700" />
+<p align="center">
+ <img src="img/sensor_weights.png" width="715" height="700" />
+  <br>
+  <em>Illustration of repulsion mapping for local avoidance </em>
+</p>
 
-When an obstacle is detected (sensor value >1000), All the sensor are evaluated through their respective weights to compute a repulsion vector.
 
-This repulsion vector is used to know the turning direction to avoid the obstacle.
+**Obstacle Detection and Avoidance Strategy:**
 
-We turn away from the obstacle and move forward.
+When an obstacle is detected (sensor value > 1000), the system evaluates all seven proximity sensors through their respective weighted connections (illustrated in the diagram above) to compute a 2D repulsion vector. This vector contains both the direction and intensity of the detected obstacle.
 
-Then we turn opposide from the previous turn to put the robot straight and to localize other obstacles.
+**Avoidance Behavior:**
 
-If no obstacle is detected, the robot recomputes the global path. The obstacle should be on the side the the robot.
+The avoidance maneuver follows a three-phase sequence:
 
-This strategy enable obstacle avoidance but has limitations if the obstacle lead the robot closer to the fix obstacles.
+1. **Turn Phase**: The robot rotates away from the obstacle using the repulsion vector to determine the optimal turning direction (left or right).
 
-<video width="800" controls>
+2. **Forward Motion**: Once oriented away from the obstacle, the robot moves forward to create distance from the detected threat.
+
+3. **Straightening Phase**: The robot performs a counter-rotation (opposite to the initial turn) to realign itself and continue scanning for additional obstacles with its forward-facing sensors.
+
+**Path Replanning:**
+
+If no obstacles are detected after the avoidance maneuver, the system assumes the obstacle is now on the side of the robot and triggers a global path recomputation to find a new route to the goal.
+
+**Limitations:**
+
+While this reactive strategy enables effective local obstacle avoidance, it has inherent limitations. The robot may be guided closer to static obstacles in the environment, particularly in scenarios where the avoidance maneuver directs it toward previously mapped obstacles in the cost map. This is the main trade-off when doing purely reactive navigation without predictive planning.
+
+<p align="center">
+  <video width="800" controls>
   <source src="img/obs_avoidance_2.mp4" type="video/mp4">
-</video>
+    </video>
+  <br>
+  <em>Demonstration of left object avoidance </em>
+</p>
 
-<video width="800" controls>
+<p align="center">
+  <video width="800" controls>
   <source src="img/obs_avoidance_3.mp4" type="video/mp4">
-</video>
+  </video>
+  <br>
+  <em>Demonstration of right object avoidance </em>
+</p>
+
 
 ## Motor Command Generation (Astolfi controller)
 
+To translate the high-level navigation commands (target position and desired orientation) into actual wheel velocities, we implement the **Astolfi controller**. This feedback control law is specifically designed for differential drive robots and provides smooth, stable convergence to target poses.
 
-## State Machine 
-The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
+The controller works by defining three error coordinates in the robot's local reference frame:
+- **$\rho$**: Distance to the target point
+- **$\alpha$**: Heading error (angle between robot orientation and direction to target)
+- **$\beta$**: Final orientation error (difference between current and desired final heading)
 
-**INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
+The control law uses proportional gains ($k_\rho$, $k_\alpha$, $k_\beta$) to compute linear and angular velocities that drive these errors to zero. This ensures the robot not only reaches the target position but also achieves the desired final orientation.
 
-**LOCALIZE** – Robot localization: continuously scans for the robot's ArUco marker (ID 78) and initializes the EKF state once detected. Transitions to PATH_PLANNING when position is acquired.
+<p align="center">
+  <img src="img/astolfi.png" width="600" height="450" />
+  <br>
+  <em>Illustration of angle for Astolfi algorithme </em>
+</p>
 
-**PATH_PLANNING** – Global navigation: detects the goal marker (ID 53), computes the A* optimal path on the cost map, applies path smoothing, and initializes the pure pursuit controller. Moves to FOLLOW_PATH once planning completes.
-
-**FOLLOW_PATH** – Path execution: runs the main control loop combining global navigation (pure pursuit) and local navigation (Braitenberg obstacle avoidance). The EKF continuously fuses odometry and vision measurements. If the robot marker is lost for more than 3 seconds, transitions to KIDNAPPED state.
-
-**KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
-
-This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
-
-![](img/state_diagram_mobile.png)
-
-<img src="img/astolfi.png" width="600" height="450" />
 
 Compute the relevant angles and distances:
 
@@ -721,6 +764,35 @@ Same empirical approach was used to tune $k_{\alpha}$ and $k_{\beta}$.
 We obtained the following values: 
 $k_{\rho} = 1.5$, $k_{\alpha} = 2.2$, $k_{\beta} = -1.0$
 
+## State Machine 
+The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
 
+**INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
 
+**LOCALIZE** – Robot localization: continuously scans for the robot's ArUco marker (ID 78) and initializes the EKF state once detected. Transitions to PATH_PLANNING when position is acquired.
 
+**PATH_PLANNING** – Global navigation: detects the goal marker (ID 53), computes the A* optimal path on the cost map, applies path smoothing, and initializes the pure pursuit controller. Moves to FOLLOW_PATH once planning completes.
+
+**FOLLOW_PATH** – Path execution: runs the main control loop combining global navigation (pure pursuit) and local navigation (Braitenberg obstacle avoidance). The EKF continuously fuses odometry and vision measurements. If the robot marker is lost for more than 3 seconds, transitions to KIDNAPPED state.
+
+**KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
+
+This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
+
+![]()
+
+<p align="center">
+  <img src="img/state_diagram_mobile.png" width="600" height="auto">
+  <br>
+  <em>Illustration of the global state machine </em>
+</p>
+
+## Conclusion
+
+This project successfully demonstrates autonomous navigation on the Thymio robot by integrating computer vision, state estimation, and path planning algorithms. The system combines deliberative global planning (A* with path smoothing) with reactive local obstacle avoidance (Braitenberg controller), coordinated through a finite state machine.
+
+The vision module provides reliable localization using ArUco markers, while the Extended Kalman Filter ensures continuous pose tracking during marker occlusions. The Astolfi controller delivers stable trajectory following, enabling the robot to reach goals while avoiding both static and dynamic obstacles.
+
+**Limitations:** The overhead camera setup limits scalability, and reactive navigation can occasionally guide the robot toward mapped obstacles. Future work could integrate SLAM techniques for map-free navigation and improve multi-obstacle handling.
+
+This project demonstrates the practical integration of perception, estimation, planning, and control in autonomous mobile robotics. 
