@@ -1,12 +1,13 @@
 # Basics of Mobile Robotics - Project
 
-## TODO UPDATE: Table of Contents
+## Table of Contents
 
 - [Introduction](#introduction)
-    - [Goal of the project](#goal-of-the-goal-of-the-project)
+    - [Goal of the project](#goal-of-the-project)
     - [Group](#group) 
+    - [Design choices](#design-choices)
     - [Demo](#demo)
-- [Vision Processing](#vision-processing)
+- [Vision processing](#vision-processing)
     - [Calibration](#calibration)
         - [Calibration parameters](#calibration-parameters)
         - [Process](#process)
@@ -23,17 +24,17 @@
     - [Extended Kalman Filter Overview](#extended-kalman-filter-overview)
     - [Prediction Step](#prediction-step)
     - [Update Step](#update-step)
+    - [The filter in action](#the-filter-in-action)
     - [Coordinate Transformations](#coordinate-transformations)
+    - [References](#references)
 - [Navigation](#navigation)
     - [Global Navigation](#global-navigation)
         - [A* Path Planning](#a-path-planning)
         - [Path Smoothing](#path-smoothing)
+        - [Greedy line-of-sight algorithm](#greedy-line-of-sight-algorithm)
         - [Path Following](#path-following)
-        - [Implementation](#implementation-4)
     - [Local Navigation](#local-navigation)
-        - [Braitenberg-Inspired Controller](#braitenberg-inspired-controller)
-        - [Sensor Fusion](#sensor-fusion)
-        - [Motor Command Generation](#motor-command-generation)
+        - [Map sensor inputs into 2D space](#map-sensor-inputs-into-2d-space)
 - [Motor Command Generation (Astolfi controller)](#motor-command-generation-astolfi-controller)
     - [Tuning the gains](#tuning-the-gains)
 - [State Machine](#state-machine)
@@ -275,13 +276,9 @@ if is_marker_in_corners:
 
 10. **Border safety** – [`cv2.rectangle(cost_map, (0, 0), (w-1, h-1), 255, border_thickness)`](https://docs.opencv.org/4.x/d6/d6e/group__imgproc__draw.html#ga07d2f74cadcf8e305e810ce8eed13bc9) – Adds a border around the entire map with thickness equal to the robot's width (13 cm) to prevent edge collisions.
 
-**Visual Pipeline:**
+**Visual Pipeline**
 
-<p align="center">
-  <img src="img/image.gif" width="453" height="329" alt="Visual animation of the processing pipeline" />
-  <br>
-  <em>Visual animation of image processing</em>
-</p>
+All the steps presented above are illustrated in the following table. A short video also presents the evolution of these steps.
 
 | Grayscale | Gaussian Blur | Adaptive Threshold | Corner Mask | Morphological Operations |
 |:---------:|:-------------:|:------------------:|:-----------:|:------------------------:|
@@ -290,6 +287,12 @@ if is_marker_in_corners:
 | Obstacle Filling | Dilation | Fading Gradient | Cost Map | Final Cost Map + Border |
 |:----------------:|:--------:|:---------------:|:--------:|:-----------------------:|
 | ![](img/Occupancy_Grid_6_Holes_Filled.png) | ![](img/Occupancy_Grid_7_Dilated.png) | ![](img/Occupancy_Grid_8_Fading_Border.png) | ![](img/Occupancy_Grid_9_Cost_Map.png) | ![](img/Occupancy_Grid_10_Cost_Map_with_Border.png) |
+
+<p align="center">
+  <img src="img/image.gif" width="453" height="329" alt="Visual animation of the processing pipeline" />
+  <br>
+  <em>Visual animation of image processing</em>
+</p>
 
 #### Implementation
 
@@ -581,7 +584,13 @@ The raw A* path countains only straigh or diagonal mouvement. The `grid_path_smo
 3. Add this farthest reachable point to the smoothed path.
 4. Update the current point to this farthest reachable point and repeat until the end of the path is reached.
 
-<img src="img/map_display.png" width="960" height="736" />
+<p align="center">
+  <img src="img/map_display.png" width="960" height="736" />
+  <br>
+  <em>Illustration of occupancy grid with legend</em>
+</p>
+
+
 
 #### Path Following
 
@@ -632,7 +641,11 @@ The `target_point()` method advances a specified lookahead distance along the pa
 
 It start with the closest point and move along this segment of the path. If the segment length is less than the lookahead distance, it move to the next segment and continue until the lookahead distance is reached.
 
-<img src="img/explain_nav.png" width="850" height="508" />
+<p align="center">
+  <img src="img/explain_nav.png" width="850" height="508" />
+  <br>
+  <em>Illustration of generated path with segments </em>
+</p>
 
 ### Local Navigation
 
@@ -640,27 +653,52 @@ It start with the closest point and move along this segment of the path. If the 
 
 The sensor readings pass through weighted connections to output a 2D repulsion direction.
 
-<img src="img/sensor_weights.png" width="715" height="700" />
+<p align="center">
+ <img src="img/sensor_weights.png" width="715" height="700" />
+  <br>
+  <em>Illustration of repulsion mapping for local avoidance </em>
+</p>
 
-When an obstacle is detected (sensor value >1000), All the sensor are evaluated through their respective weights to compute a repulsion vector.
+# TODO : Verify this paragraph
 
-This repulsion vector is used to know the turning direction to avoid the obstacle.
+**Obstacle Detection and Avoidance Strategy:**
 
-We turn away from the obstacle and move forward.
+When an obstacle is detected (sensor value > 1000), the system evaluates all seven proximity sensors through their respective weighted connections (illustrated in the diagram above) to compute a 2D repulsion vector. This vector indicates both the direction and intensity of the detected obstacle.
 
-Then we turn opposide from the previous turn to put the robot straight and to localize other obstacles.
+**Avoidance Behavior:**
 
-If no obstacle is detected, the robot recomputes the global path. The obstacle should be on the side the the robot.
+The avoidance maneuver follows a three-phase sequence:
 
-This strategy enable obstacle avoidance but has limitations if the obstacle lead the robot closer to the fix obstacles.
+1. **Turn Phase**: The robot rotates away from the obstacle using the repulsion vector to determine the optimal turning direction (left or right).
 
-<video width="800" controls>
+2. **Forward Motion**: Once oriented away from the obstacle, the robot moves forward to create distance from the detected threat.
+
+3. **Straightening Phase**: The robot performs a counter-rotation (opposite to the initial turn) to realign itself and continue scanning for additional obstacles with its forward-facing sensors.
+
+**Path Replanning:**
+
+If no obstacles are detected after the avoidance maneuver, the system assumes the obstacle is now on the side of the robot and triggers a global path recomputation to find a new route to the goal.
+
+**Limitations:**
+
+While this reactive strategy enables effective local obstacle avoidance, it has inherent limitations. The robot may be guided closer to static obstacles in the environment, particularly in scenarios where the avoidance maneuver directs it toward previously mapped obstacles in the cost map. This is an inherent trade-off of purely reactive navigation without predictive planning.
+
+<p align="center">
+  <<video width="800" controls>
   <source src="img/obs_avoidance_2.mp4" type="video/mp4">
-</video>
+    </video>
+  <br>
+  <em>Demonstration of left object avoidance </em>
+</p>
 
-<video width="800" controls>
+<p align="center">
+  <video width="800" controls>
   <source src="img/obs_avoidance_3.mp4" type="video/mp4">
-</video>
+  </video>
+  <br>
+  <em>Demonstration of right object avoidance </em>
+</p>
+
 
 ## Motor Command Generation (Astolfi controller)
 
@@ -673,7 +711,12 @@ The controller works by defining three error coordinates in the robot's local re
 
 The control law uses proportional gains ($k_\rho$, $k_\alpha$, $k_\beta$) to compute linear and angular velocities that drive these errors to zero. This ensures the robot not only reaches the target position but also achieves the desired final orientation.
 
-<img src="img/astolfi.png" width="600" height="450" />
+<p align="center">
+  <img src="img/astolfi.png" width="600" height="450" />
+  <br>
+  <em>Illustration of angle for Astolfi algorithme </em>
+</p>
+
 
 Compute the relevant angles and distances:
 
@@ -723,4 +766,10 @@ The robot's behavior is orchestrated by a **finite state machine** that coordina
 
 This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
 
-![](img/state_diagram_mobile.png)
+![]()
+
+<p align="center">
+  <img src="img/state_diagram_mobile.png" width="600" height="450">
+  <br>
+  <em>Illustration of the global state machine </em>
+</p>
