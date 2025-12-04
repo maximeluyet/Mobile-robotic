@@ -34,6 +34,9 @@
         - [Braitenberg-Inspired Controller](#braitenberg-inspired-controller)
         - [Sensor Fusion](#sensor-fusion)
         - [Motor Command Generation](#motor-command-generation)
+- [Motor Command Generation (Astolfi controller)](#motor-command-generation-astolfi-controller)
+    - [Tuning the gains](#tuning-the-gains)
+- [State Machine](#state-machine)
 - [Results](#results)
 - [Conclusion](#conclusion)
 
@@ -91,10 +94,13 @@ Concerning each part of the project, specific choices were made to reach the fix
 ### Demo 
 Here you can see a video of the final result. The Thymio successfully reaches the goal while navigating through obstacles. He also keed track of the path even when blinded due to Kalman filtering. The Thymio is also able to reconise when he is kidnapped and recompute the optimal path. 
 
-<video width="800" controls>
-  <source src="img/Mobile_robotic_project_T41_demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+<p align="center">
+    <video width="800" controls>
+    <source src="img/Mobile_robotic_project_T41_demo.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+    <em> Global demostration of the project</em>
+    </video>
+</p>
 
 **Video Elements Explanation:**
 
@@ -489,9 +495,12 @@ The following image shows the filter working during one run of the robot. There 
 
 Here is a video that also illustrates the above explanations:
 
-<video width="800" controls>
-  <source src="img/elipse_ekf.mp4" type="video/mp4">
-</video>
+<p align="center">
+    <video width="800" controls>
+    <source src="img/elipse_ekf.mp4" type="video/mp4">
+    </video>
+    <em>Demostration of the EFF in action</em>
+</p>
 
 ### Coordinate Transformations
 
@@ -520,7 +529,7 @@ The Kalman filter implementation was inspired by the [ROS ekf implementation](ht
 
 ## Navigation
 
-The navigation system is divided into two complementary modules: **Global Navigation** for strategic path planning and **Local Navigation** for reactive obstacle avoidance. This architecture follows the hybrid deliberative-reactive paradigm commonly used in mobile robotics.
+The navigation system is divided into two complementary modules: **Global Navigation** for strategic path planning and **Local Navigation** for reactive obstacle avoidance. This architecture follows the hybrid [deliberative-reactive paradigm](https://en.wikipedia.org/wiki/Robotic_paradigm) commonly used in mobile robotics.
 
 ### Global Navigation
 
@@ -566,7 +575,7 @@ We chose this approach have a cautious "optimal" path.
 
 The raw A* path countains only straigh or diagonal mouvement. The `grid_path_smoothing()` method applies a **greedy line-of-sight algorithm** to remove intermediate points while maintaining collision-free paths and giving path with every angle not restraint to 45° mouvement.
 
-#### greedy line-of-sight algorithm
+#### Greedy line-of-sight algorithm
 1. Start with the first point in the A* path as the current point.
 2. Iterate through the path points to find the farthest point that can be reached in a straight line from the current point without intersecting any obstacles in the cost map.
 3. Add this farthest reachable point to the smoothed path.
@@ -655,23 +664,14 @@ This strategy enable obstacle avoidance but has limitations if the obstacle lead
 
 ## Motor Command Generation (Astolfi controller)
 
+To translate the high-level navigation commands (target position and desired orientation) into actual wheel velocities, we implement the **Astolfi controller**. This feedback control law is specifically designed for differential drive robots and provides smooth, stable convergence to target poses.
 
-## State Machine 
-The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
+The controller works by defining three error coordinates in the robot's local reference frame:
+- **$\rho$**: Distance to the target point
+- **$\alpha$**: Heading error (angle between robot orientation and direction to target)
+- **$\beta$**: Final orientation error (difference between current and desired final heading)
 
-**INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
-
-**LOCALIZE** – Robot localization: continuously scans for the robot's ArUco marker (ID 78) and initializes the EKF state once detected. Transitions to PATH_PLANNING when position is acquired.
-
-**PATH_PLANNING** – Global navigation: detects the goal marker (ID 53), computes the A* optimal path on the cost map, applies path smoothing, and initializes the pure pursuit controller. Moves to FOLLOW_PATH once planning completes.
-
-**FOLLOW_PATH** – Path execution: runs the main control loop combining global navigation (pure pursuit) and local navigation (Braitenberg obstacle avoidance). The EKF continuously fuses odometry and vision measurements. If the robot marker is lost for more than 3 seconds, transitions to KIDNAPPED state.
-
-**KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
-
-This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
-
-![](img/state_diagram_mobile.png)
+The control law uses proportional gains ($k_\rho$, $k_\alpha$, $k_\beta$) to compute linear and angular velocities that drive these errors to zero. This ensures the robot not only reaches the target position but also achieves the desired final orientation.
 
 <img src="img/astolfi.png" width="600" height="450" />
 
@@ -708,6 +708,19 @@ Same empirical approach was used to tune $k_{\alpha}$ and $k_{\beta}$.
 We obtained the following values: 
 $k_{\rho} = 1.5$, $k_{\alpha} = 2.2$, $k_{\beta} = -1.0$
 
+## State Machine 
+The robot's behavior is orchestrated by a **finite state machine** that coordinates the vision, filtering, and navigation modules. The system operates in five distinct states:
 
+**INIT** – System initialization: launches the camera thread, performs initial ArUco detection to establish the reference frame, computes the bird's-eye view transformation, and generates the occupancy grid.
 
+**LOCALIZE** – Robot localization: continuously scans for the robot's ArUco marker (ID 78) and initializes the EKF state once detected. Transitions to PATH_PLANNING when position is acquired.
 
+**PATH_PLANNING** – Global navigation: detects the goal marker (ID 53), computes the A* optimal path on the cost map, applies path smoothing, and initializes the pure pursuit controller. Moves to FOLLOW_PATH once planning completes.
+
+**FOLLOW_PATH** – Path execution: runs the main control loop combining global navigation (pure pursuit) and local navigation (Braitenberg obstacle avoidance). The EKF continuously fuses odometry and vision measurements. If the robot marker is lost for more than 3 seconds, transitions to KIDNAPPED state.
+
+**KIDNAPPED** – Recovery mode: triggered when prolonged marker occlusion suggests the robot has been moved. Attempts to relocalize the robot marker, and if detected at a significantly different position (>10 cm from prediction), returns to PATH_PLANNING to recompute the path from the new location.
+
+This architecture ensures robust operation with automatic recovery from localization failures and dynamic replanning when the robot's position changes unexpectedly.The image below explain a bit more in details these steps and their transitions.
+
+![](img/state_diagram_mobile.png)
