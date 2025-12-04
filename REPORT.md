@@ -200,7 +200,12 @@ These markers enable the vision system to:
 3. Track the robot's position and orientation in real-time.
 4. Identify the goal location for path planning.
 
-![Map with ArUco markers](scripts/aruco_markers/img/map_img.png)
+<br>
+<p align="center">
+  <img src="scripts/aruco_markers/img/map_img.png" width="600" height="auto" alt="Map with ArUco markers" />
+  <br>
+  <em>Visual animation of image processing</em>
+</p>
 
 #### Implementation 
 
@@ -502,6 +507,7 @@ Here is a video that also illustrates the above explanations:
     <video width="800" controls>
     <source src="img/elipse_ekf.mp4" type="video/mp4">
     </video>
+    <br>
     <em>Demostration of the EFF in action</em>
 </p>
 
@@ -528,7 +534,7 @@ The system requires transformations between two reference frames:
 These transformations are added to the [ekf module](./src/filtering.py) and provide integration between the vision system (providing measurements in pixels), the EKF (operating in millimeters), and the robot controller (commanding in Thymio units).
 
 ### References:
-The Kalman filter implementation was inspired by the [ROS ekf implementation](https://docs.ros.org/en/lunar/api/robot_localization/html/_downloads/robot_localization_ias13_revised.pdf) as well as the [Kalman filter wikipedia article](https://en.wikipedia.org/wiki/Kalman_filter) for the formulae. The [following article](https://www.alanzucconi.com/2022/07/24/extended-kalman-filter/) has also been helpful. The motion model follows lecture 4 of the Distributed intelligent systems course (ENG-466) taught by A. Martinoli. The slides can be found [here](https://disalw3.epfl.ch/teaching/distributed_intelligent_systems/ay2025-26/lecture/DIS_25-26_W04_lecture.pdf).
+Apart from the content of the BOMR course, the Kalman filter implementation was inspired by the [ROS ekf implementation](https://docs.ros.org/en/lunar/api/robot_localization/html/_downloads/robot_localization_ias13_revised.pdf) as well as the [Kalman filter wikipedia article](https://en.wikipedia.org/wiki/Kalman_filter) for the formulae. The [following article](https://www.alanzucconi.com/2022/07/24/extended-kalman-filter/) has also been helpful. The motion model follows lecture 4 of the Distributed intelligent systems course (ENG-466) taught by A. Martinoli. The slides can be found [here](https://disalw3.epfl.ch/teaching/distributed_intelligent_systems/ay2025-26/lecture/DIS_25-26_W04_lecture.pdf).
 
 ## Navigation
 
@@ -659,11 +665,10 @@ The sensor readings pass through weighted connections to output a 2D repulsion d
   <em>Illustration of repulsion mapping for local avoidance </em>
 </p>
 
-# TODO : Verify this paragraph
 
 **Obstacle Detection and Avoidance Strategy:**
 
-When an obstacle is detected (sensor value > 1000), the system evaluates all seven proximity sensors through their respective weighted connections (illustrated in the diagram above) to compute a 2D repulsion vector. This vector indicates both the direction and intensity of the detected obstacle.
+When an obstacle is detected (sensor value > 1000), the system evaluates all seven proximity sensors through their respective weighted connections (illustrated in the diagram above) to compute a 2D repulsion vector. This vector contains both the direction and intensity of the detected obstacle.
 
 **Avoidance Behavior:**
 
@@ -681,10 +686,10 @@ If no obstacles are detected after the avoidance maneuver, the system assumes th
 
 **Limitations:**
 
-While this reactive strategy enables effective local obstacle avoidance, it has inherent limitations. The robot may be guided closer to static obstacles in the environment, particularly in scenarios where the avoidance maneuver directs it toward previously mapped obstacles in the cost map. This is an inherent trade-off of purely reactive navigation without predictive planning.
+While this reactive strategy enables effective local obstacle avoidance, it has inherent limitations. The robot may be guided closer to static obstacles in the environment, particularly in scenarios where the avoidance maneuver directs it toward previously mapped obstacles in the cost map. This is the main trade-off when doing purely reactive navigation without predictive planning.
 
 <p align="center">
-  <<video width="800" controls>
+  <video width="800" controls>
   <source src="img/obs_avoidance_2.mp4" type="video/mp4">
     </video>
   <br>
@@ -769,7 +774,7 @@ This architecture ensures robust operation with automatic recovery from localiza
 ![]()
 
 <p align="center">
-  <img src="img/state_diagram_mobile.png" width="600" height="450">
+  <img src="img/state_diagram_mobile.png" width="600" height="auto">
   <br>
   <em>Illustration of the global state machine </em>
 </p>
